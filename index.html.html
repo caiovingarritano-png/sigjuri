@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão Jurídica Autônomo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script> <!-- Carregando Lucide Icons --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles with dark mode awareness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+            transition: background-color 0.3s ease;
+        }
+        .dark body {
+            background-color: #1a202c; /* Cor de fundo escura */
+        }
+        
+        /* Containers e elementos principais que mudam de cor */
+        .card-bg {
+            background-color: white;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .dark .card-bg {
+            background-color: #2d3748; /* Fundo escuro para cards */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .container {
+            max-width: 900px;
+        }
+        .scrollable-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            transition: border-color 0.3s ease;
+        }
+        .dark .scrollable-list {
+            border-color: #4a5568;
+        }
+
+        .processo-item:hover {
+            background-color: #f0f4f8;
+            cursor: pointer;
+        }
+        .dark .processo-item:hover {
+            background-color: #3b4556;
+        }
+        .processo-item.selected {
+            background-color: #e0f2fe; /* Destaca o item selecionado */
+            border-left: 4px solid #3b82f6;
+        }
+        .dark .processo-item.selected {
+            background-color: #1e3a8a; 
+            border-left: 4px solid #6366f1;
+        }
+
+        /* Loading */
+        .loading-dots span { animation: bounce 1s infinite; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Sticky Form */
+        .sticky-form {
+            position: sticky;
+            top: 6rem;
+        }
+
+        /* Status Tags */
+        .status-tag {
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+        /* Mapeamento de classes de status (manter cores vivas) */
+        .status-Aceita { background-color: #d1fae5; color: #065f46; }
+        .status-Arquivado { background-color: #fee2e2; color: #991b1b; }
+        .status-Substituída { background-color: #fffbeb; color: #92400e; }
+        .status-EmAndamento { background-color: #e0f2fe; color: #0369a1; }
+        .status-Concluído { background-color: #eef2ff; color: #4338ca; }
+        .status-Agendada { background-color: #f3e8ff; color: #6d28d9; }
+        .status-EmAguardodaData { background-color: #fef9c3; color: #b45309; }
+
+        /* Menu Hamburguer */
+        .hamburger-icon {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 24px;
+            cursor: pointer;
+            z-index: 50;
+            transition: transform 0.3s ease;
+        }
+        .bar {
+            width: 100%;
+            height: 3px;
+            background-color: #1f2937;
+            border-radius: 9999px;
+            transition: all 0.3s ease-in-out;
+        }
+        .dark .bar {
+            background-color: #f7fafc; /* Barras claras no modo escuro */
+        }
+        .hamburger-icon.active .bar:nth-child(2) { opacity: 0; transform: translateX(-10px); }
+        .hamburger-icon.active .bar:nth-child(1) { transform: translateY(10.5px) rotate(45deg); }
+        .hamburger-icon.active .bar:nth-child(3) { transform: translateY(-10.5px) rotate(-45deg); }
+
+        /* Menu Dropdown */
+        .nav-menu {
+            position: absolute;
+            top: 60px;
+            left: 1rem;
+            width: 280px;
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 40;
+            padding: 0.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s, background-color 0.3s;
+        }
+
+        .dark .nav-menu {
+            background-color: #1f2937;
+        }
+
+        .nav-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .ai-result-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body class="p-0">
+
+    <!-- Modal para Mensagens Customizadas e Erros --><div id="messageModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="card-bg rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all">
+            <h3 id="modalTitle" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100"></h3>
+            <div id="modalContent" class="text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-wrap"></div>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md">
+                    Entendi
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Confirmação de Exclusão --><div id="deleteConfirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="card-bg rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all">
+            <h3 class="text-xl font-bold mb-4 text-red-600">Confirmar Exclusão</h3>
+            <div class="text-gray-700 dark:text-gray-300 mb-6">
+                <p>Você tem certeza que deseja excluir o processo <span id="processNumberToDelete" class="font-bold"></span>?</p>
+                <p class="mt-2 text-sm text-red-500">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-150">
+                    Cancelar
+                </button>
+                <button id="confirmDeleteButton" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-150 shadow-md">
+                    Excluir Permanentemente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CABEÇALHO FIXO COM MENU --><header class="sticky top-0 left-0 w-full bg-white dark:bg-gray-800 shadow-md z-40 h-16 flex items-center px-4 transition duration-300">
+        <button id="menu-toggle" aria-label="Menu de Navegação" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+            <div class="hamburger-icon" id="hamburger-icon">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </button>
+        <div class="ml-4 text-xl font-bold text-indigo-800 dark:text-indigo-400">Sistema de Gestão Jurídica Autônomo</div>
+    </header>
+
+    <!-- MENU DROPDOWN SUPERIOR ESQUERDO --><nav id="nav-menu" class="nav-menu">
+        <!-- Ferramentas de Visualização (NOVO) --><div class="p-2 text-sm font-semibold text-gray-500 border-b dark:border-gray-600 mb-2">Visualização</div>
+        <a href="javascript:void(0)" id="darkModeToggle" onclick="toggleDarkMode(); closeNavMenu();" class="flex items-center justify-between gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+            <div class="flex items-center gap-3">
+                <i id="darkModeIcon" data-lucide="sun" class="w-5 h-5 text-orange-400"></i>
+                <span id="darkModeText">Modo Claro</span>
+            </div>
+        </a>
+
+        <!-- Ferramentas de Dados --><div class="p-2 text-sm font-semibold text-gray-500 border-t dark:border-gray-600 mt-2 pt-2">Ferramentas de Dados</div>
+        <a href="javascript:void(0)" onclick="handleFileImport(); closeNavMenu();" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-green-100 dark:hover:bg-green-700/50 transition duration-150">
+            <i data-lucide="upload" class="w-5 h-5 text-green-500"></i>
+            <span>Importar CSV</span>
+        </a>
+        <a href="javascript:void(0)" onclick="clearAllData(); closeNavMenu();" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-red-100 dark:hover:bg-red-700/50 transition duration-150">
+            <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i>
+            <span>Limpar Todos os Dados</span>
+        </a>
+        
+        <!-- Acessos Rápidos (Sistemas SP) --><div class="p-2 text-sm font-semibold text-gray-500 border-t dark:border-gray-600 mt-2 pt-2">Acessos Rápidos (Sistemas SP)</div>
+        <a href="https://www.tjsp.jus.br/" target="_blank" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-700/50 transition duration-150">
+            <i data-lucide="globe" class="w-5 h-5 text-blue-500"></i>
+            <span>TJSP - Tribunal de Justiça</span>
+        </a>
+        <a href="https://esaj.tjsp.jus.br/" target="_blank" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-700/50 transition duration-150">
+            <i data-lucide="monitor" class="w-5 h-5 text-blue-500"></i>
+            <span>e-SAJ (TJ/SP)</span>
+        </a>
+        <a href="https://eproc.jfsp.jus.br/eproc/" target="_blank" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-700/50 transition duration-150">
+            <i data-lucide="database" class="w-5 h-5 text-blue-500"></i>
+            <span>EPROC - Justiça Federal SP</span>
+        </a>
+    </nav>
+    
+    <!-- Main Container --><div class="container mx-auto p-4 md:p-8 pt-20"> 
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-indigo-800 dark:text-indigo-400">Gerenciamento e Análise de Processos</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Utilize os formulários abaixo para manter seu cadastro atualizado.</p>
+        </header>
+
+        <!-- Seção de Configurações --><div class="card-bg p-6 rounded-xl shadow-lg mb-8 border border-indigo-200 dark:border-indigo-800">
+            <h2 class="text-2xl font-semibold text-indigo-700 dark:text-indigo-300 mb-4 flex items-center gap-2">
+                <i data-lucide="wrench" class="w-6 h-6"></i>
+                Configurações da I.A. e Importação
+            </h2>
+            <p class="text-sm text-red-600 dark:text-red-400 mb-3 font-medium">ATENÇÃO AO 403: Se você estiver na plataforma (Canvas), DEIXE o campo abaixo VAZIO. Se baixou o arquivo, insira sua chave.</p>
+            <div class="grid grid-cols-1 gap-4 items-end">
+                <!-- API Key --><div>
+                    <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Chave da I.A. Gemini (Opcional p/ uso local):</label>
+                    <input type="text" id="apiKeyInput" placeholder="Insira sua chave aqui se estiver offline" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <!-- Mantenho os campos de arquivo, mas os botões estão no menu agora --><div class="mt-4">
+                <label for="csvFileInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Arquivo CSV para Importação (Clique em "Importar CSV" no menu)</label>
+                <input type="file" id="csvFileInput" accept=".csv" class="mt-1 block w-full text-sm text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:placeholder-gray-400 p-2">
+            </div>
+        </div>
+
+        <!-- Formulário de Novo Processo e Listagem --><div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Coluna de Detalhes e I.A. --><div class="lg:col-span-2">
+                <div class="card-bg p-6 rounded-xl shadow-lg mb-8 border border-blue-200 dark:border-blue-800">
+                    <h2 class="text-2xl font-semibold text-blue-700 dark:text-blue-300 mb-4 flex items-center gap-2">
+                        <i data-lucide="list-checks" class="w-6 h-6"></i>
+                        Lista de Processos
+                    </h2>
+                    <div class="mb-4">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-3"></i>
+                            <input type="text" id="searchInput" oninput="renderProcessos()" placeholder="Buscar por número, envolvido ou status..." class="w-full p-2 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div id="processosList" class="scrollable-list bg-gray-50 dark:bg-gray-900/50 divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- Itens de processo serão renderizados aqui --><div class="p-4 text-center text-gray-500 dark:text-gray-400" id="emptyMessage">Nenhum processo cadastrado. Por favor, importe seu CSV.</div>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">Total de Processos: <span id="processCount">0</span></div>
+                </div>
+
+                <!-- Painel de Detalhes e Análise I.A. --><div class="card-bg p-6 rounded-xl shadow-lg border border-indigo-300 dark:border-indigo-800">
+                    <h2 class="text-2xl font-semibold text-indigo-700 dark:text-indigo-300 mb-4 flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                        Detalhes do Processo Selecionado
+                    </h2>
+                    <div id="detalhesProcesso" class="text-gray-700 dark:text-gray-300">
+                        <p class="mb-3">Selecione um processo na lista acima para ver os detalhes e a análise da I.A.</p>
+                    </div>
+
+                    <div id="actionButtons" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 hidden">
+                        <!-- Botão de Exclusão --><button id="deleteButton" onclick="openDeleteModal()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-150 font-semibold shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            Excluir Processo
+                        </button>
+                        
+                        <!-- Botão Análise I.A. --><button id="analyzeButton" onclick="analisarProcessoComIA()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150 font-semibold shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                            Analisar Processo I.A.
+                        </button>
+                        
+                        <!-- NOVO: Botão Rascunho Petição I.A. --><button id="draftPetitionButton" onclick="rascunharPeticaoInicialComIA()" class="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition duration-150 font-semibold shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            Rascunhar Petição (I.A. ✨)
+                        </button>
+                    </div>
+                    
+                    <div id="aiAnalysisContainer" class="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/40 rounded-lg border border-indigo-300 dark:border-indigo-600 hidden">
+                        <h3 id="aiAnalysisHeader" class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                            <i data-lucide="brain" class="w-5 h-5"></i>
+                            Resultado da I.A.
+                        </h3>
+                        <div id="aiAnalysisResult" class="text-gray-800 dark:text-gray-200 leading-relaxed min-h-[50px]">
+                            <!-- Resultado da I.A. será inserido aqui --></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna do Formulário --><div class="lg:col-span-1">
+                <form id="processoForm" class="card-bg p-6 rounded-xl shadow-lg border border-green-200 dark:border-green-800 sticky-form">
+                    <h2 class="text-2xl font-semibold text-green-700 dark:text-green-300 mb-4 flex items-center gap-2">
+                        <i data-lucide="file-plus" class="w-6 h-6"></i>
+                        Cadastrar / Editar Processo
+                    </h2>
+                    <input type="hidden" id="processoId">
+                    
+                    <div class="mb-4">
+                        <label for="dataAutorizacao" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data da Autorização</label>
+                        <input type="date" id="dataAutorizacao" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="numeroProcesso" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Número do Processo</label>
+                        <input type="text" id="numeroProcesso" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="envolvidos" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Envolvidos</label>
+                        <input type="text" id="envolvidos" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="statusProcesso" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                        <select id="statusProcesso" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                            <option value="Aceita">Aceita</option>
+                            <option value="Arquivado">Arquivado</option>
+                            <option value="Substituída">Substituída</option>
+                            <option value="Em Andamento">Em Andamento</option>
+                            <option value="Concluído">Concluído</option>
+                            <!-- Adicionei status do seu CSV para melhor compatibilidade com a importação --><option value="Agendada">Agendada</option>
+                            <option value="Em Aguardo da Data">Em Aguardo da Data</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="detalhes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Detalhes (Breve)</label>
+                        <textarea id="detalhes" rows="3" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="sistema" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sistema</label>
+                        <input type="text" id="sistema" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg" placeholder="e-SAJ, EPROC, N/A, etc.">
+                    </div>
+                    
+                    <button type="submit" class="w-full px-4 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 shadow-md flex items-center justify-center gap-2">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        Salvar Processo
+                    </button>
+                    <button type="button" onclick="resetForm()" class="w-full mt-2 px-4 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-150 shadow-md flex items-center justify-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                        Novo Processo / Limpar Formulário
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variável global para armazenar a lista de processos
+        let processos = [];
+        // Variável para armazenar o ID do processo que será excluído (usado pelo modal)
+        let processIdToDelete = null;
+        
+        // Chaves LocalStorage
+        const LS_KEY = 'sistema_juridico_processos';
+        const LS_API_KEY = 'gemini_api_key'; // Chave para persistir a API Key
+        const LS_THEME = 'theme'; // Chave para persistir o tema
+        // URL da API do Google Gemini
+        const DEFAULT_MODEL = "gemini-2.5-flash-preview-09-2025";
+
+        // ========================
+        // FUNÇÕES DE UTILIDADE E UI
+        // ========================
+
+        /**
+         * Exibe o modal de mensagem customizado e seguro (não usa alert()).
+         */
+        function showModal(title, content, type = 'info') {
+            const modal = document.getElementById('messageModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            modalTitle.textContent = title;
+            modalContent.textContent = content;
+
+            // Define as cores do título
+            modalTitle.classList.remove('text-green-600', 'text-red-600', 'text-gray-800');
+            modalTitle.classList.add('dark:text-gray-100'); // Cor padrão para dark mode
+            if (type === 'success') {
+                modalTitle.classList.add('text-green-600', 'dark:text-green-400');
+            } else if (type === 'error') {
+                modalTitle.classList.add('text-red-600', 'dark:text-red-400');
+            } else {
+                modalTitle.classList.add('text-gray-800');
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        /**
+         * Fecha o modal de mensagem.
+         */
+        function closeModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+
+        /**
+         * Abre o modal de confirmação de exclusão.
+         */
+        function openDeleteModal() {
+            const id = document.getElementById('processoId').value;
+            const processo = processos.find(p => p.id === id);
+
+            if (!processo) {
+                showModal("Erro de Exclusão", "Nenhum processo selecionado para exclusão.", 'error');
+                return;
+            }
+
+            processIdToDelete = id;
+            document.getElementById('processNumberToDelete').textContent = processo.numeroProcesso || 'N/A';
+            document.getElementById('deleteConfirmationModal').classList.remove('hidden');
+        }
+
+        /**
+         * Fecha o modal de confirmação de exclusão.
+         */
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmationModal').classList.add('hidden');
+            processIdToDelete = null;
+            document.getElementById('processNumberToDelete').textContent = '';
+        }
+
+        /**
+         * Simula a geração de um ID único simples.
+         */
+        function generateUniqueId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+        }
+
+        /**
+         * Remove acentos e caracteres especiais para busca.
+         */
+        function normalizeString(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+        
+        /**
+         * Inicializa os ícones do Lucide.
+         */
+        function initIcons() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        /**
+         * Mapeia o status do processo para classes CSS para estilo visual.
+         */
+        function getStatusClass(status) {
+            // Remove acentos, espaços e converte para lower-camel-case para o nome da classe CSS
+            const normalizedStatus = status
+                .replace(/\s/g, '')
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/^(.)/, (match) => match.toUpperCase());
+
+            return `status-${normalizedStatus}`;
+        }
+
+        // ========================
+        // TEMA (MODO ESCURO)
+        // ========================
+
+        /**
+         * Atualiza o ícone e texto do toggle de modo escuro no menu.
+         */
+        function updateDarkModeToggleUI(isDarkMode) {
+            const iconElement = document.getElementById('darkModeIcon');
+            const textElement = document.getElementById('darkModeText');
+            
+            if (iconElement && textElement) {
+                if (isDarkMode) {
+                    iconElement.setAttribute('data-lucide', 'sun');
+                    textElement.textContent = 'Modo Claro';
+                    iconElement.classList.remove('text-yellow-500');
+                    iconElement.classList.add('text-orange-400');
+                } else {
+                    iconElement.setAttribute('data-lucide', 'moon');
+                    textElement.textContent = 'Modo Escuro';
+                    iconElement.classList.remove('text-orange-400');
+                    iconElement.classList.add('text-yellow-500');
+                }
+                // Re-renderiza os ícones após alterar o atributo data-lucide
+                initIcons(); 
+            }
+        }
+
+        /**
+         * Toggles dark mode on the HTML element and persists the preference.
+         */
+        function toggleDarkMode() {
+            const htmlEl = document.documentElement;
+            const isDarkMode = htmlEl.classList.toggle('dark');
+            
+            // 1. Persiste a preferência
+            localStorage.setItem(LS_THEME, isDarkMode ? 'dark' : 'light');
+
+            // 2. Atualiza a UI do Menu
+            updateDarkModeToggleUI(isDarkMode);
+        }
+
+        /**
+         * Aplica o tema salvo no LocalStorage ao carregar a página.
+         */
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem(LS_THEME);
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // Determina o tema
+            const currentTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+            const isDarkMode = currentTheme === 'dark';
+            
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            updateDarkModeToggleUI(isDarkMode);
+        }
+
+        // ========================
+        // PERSISTÊNCIA (LOCALSTORAGE)
+        // ========================
+
+        /**
+         * Salva a lista de processos no LocalStorage.
+         */
+        function saveProcessos() {
+            try {
+                localStorage.setItem(LS_KEY, JSON.stringify(processos));
+            } catch (error) {
+                console.error("Erro ao salvar no LocalStorage:", error);
+                showModal("Erro de Salvamento", "Não foi possível salvar os dados no LocalStorage do seu navegador.", 'error');
+            }
+        }
+
+        /**
+         * Carrega a lista de processos do LocalStorage.
+         */
+        function loadProcessos() {
+            try {
+                const storedData = localStorage.getItem(LS_KEY);
+                if (storedData) {
+                    processos = JSON.parse(storedData);
+                } else {
+                    processos = [];
+                }
+            } catch (error) {
+                console.error("Erro ao carregar do LocalStorage:", error);
+                processos = [];
+            }
+            renderProcessos();
+        }
+
+        /**
+         * Limpa todos os dados de processo do LocalStorage e reinicia a lista.
+         */
+        function clearAllData() {
+            localStorage.removeItem(LS_KEY);
+            processos = []; 
+            renderProcessos();
+            resetForm();
+            document.getElementById('detalhesProcesso').innerHTML = '<p class="mb-3 dark:text-gray-300">Selecione um processo na lista acima para ver os detalhes e a análise da I.A.</p>';
+            document.getElementById('aiAnalysisContainer').classList.add('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+            showModal("Dados Limpos", "Todos os dados salvos foram removidos. A lista está vazia.", 'success');
+        }
+
+        // ========================
+        // RENDERIZAÇÃO E CRUD
+        // ========================
+        
+        /**
+         * Executa a exclusão após a confirmação no modal.
+         */
+        document.getElementById('confirmDeleteButton').addEventListener('click', function() {
+            if (processIdToDelete) {
+                const initialLength = processos.length;
+                processos = processos.filter(p => p.id !== processIdToDelete);
+                
+                if (processos.length < initialLength) {
+                    saveProcessos();
+                    renderProcessos();
+                    resetForm();
+                    document.getElementById('detalhesProcesso').innerHTML = '<p class="mb-3 dark:text-gray-300">Selecione um processo na lista acima para ver os detalhes e a análise da I.A.</p>';
+                    document.getElementById('aiAnalysisContainer').classList.add('hidden');
+                    document.getElementById('actionButtons').classList.add('hidden');
+                    showModal("Excluído com Sucesso", "O processo foi removido permanentemente.", 'success');
+                } else {
+                    showModal("Erro de Exclusão", "Não foi possível encontrar o processo para excluir.", 'error');
+                }
+                
+                closeDeleteModal();
+            }
+        });
+
+
+        /**
+         * Renderiza a lista de processos na UI, aplicando o filtro de busca.
+         */
+        function renderProcessos() {
+            const listElement = document.getElementById('processosList');
+            const searchInput = document.getElementById('searchInput').value;
+            const normalizedSearch = normalizeString(searchInput);
+
+            const sortedProcessos = [...processos].sort((a, b) => new Date(b.dataAutorizacao) - new Date(a.dataAutorizacao));
+
+            const filteredProcessos = sortedProcessos.filter(p => 
+                !searchInput || 
+                normalizeString(p.numeroProcesso || '').includes(normalizedSearch) ||
+                normalizeString(p.envolvidos || '').includes(normalizedSearch) ||
+                normalizeString(p.statusProcesso || '').includes(normalizedSearch)
+            );
+
+            listElement.innerHTML = '';
+            
+            document.querySelectorAll('.processo-item').forEach(item => item.classList.remove('selected'));
+
+            if (processos.length === 0) {
+                listElement.innerHTML = '<div class="p-4 text-center text-gray-500 dark:text-gray-400" id="emptyMessage">Nenhum processo cadastrado. Por favor, importe seu CSV.</div>';
+            } else if (filteredProcessos.length === 0) {
+                listElement.innerHTML = '<div class="p-4 text-center text-gray-500 dark:text-gray-400">Nenhum processo encontrado com este filtro.</div>';
+            } else {
+                const currentSelectedId = document.getElementById('processoId').value;
+
+                filteredProcessos.forEach(processo => {
+                    const item = document.createElement('div');
+                    const isSelected = currentSelectedId === processo.id;
+
+                    item.className = `processo-item p-4 transition duration-100 ease-in-out flex justify-between items-center ${isSelected ? 'selected' : ''}`;
+                    item.setAttribute('data-id', processo.id);
+                    item.onclick = () => selectProcesso(processo.id);
+                    
+                    const dataFormatada = processo.dataAutorizacao ? new Date(processo.dataAutorizacao).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+                    const statusClass = getStatusClass(processo.statusProcesso || 'N/A');
+
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="file-text" class="w-5 h-5 text-blue-500"></i>
+                            <div>
+                                <p class="font-bold text-gray-800 dark:text-gray-100">${processo.numeroProcesso || '--'} - ${processo.envolvidos || 'N/A'}</p>
+                                <p class="text-sm text-gray-500 flex items-center gap-2">
+                                    <span class="${statusClass} status-tag">${processo.statusProcesso || 'N/A'}</span> 
+                                    | <span class="dark:text-gray-400">Autorização: ${dataFormatada}</span>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    listElement.appendChild(item);
+                });
+            }
+            
+            document.getElementById('processCount').textContent = processos.length;
+            initIcons();
+        }
+
+        /**
+         * Seleciona um processo e exibe seus detalhes e formulário para edição.
+         */
+        function selectProcesso(id) {
+            const processo = processos.find(p => p.id === id);
+            if (!processo) return;
+
+            document.querySelectorAll('.processo-item').forEach(item => item.classList.remove('selected'));
+            document.querySelector(`.processo-item[data-id="${id}"]`).classList.add('selected');
+
+            // Preenche o formulário para edição
+            document.getElementById('processoId').value = processo.id;
+            document.getElementById('dataAutorizacao').value = processo.dataAutorizacao || '';
+            document.getElementById('numeroProcesso').value = processo.numeroProcesso || '';
+            document.getElementById('envolvidos').value = processo.envolvidos || '';
+            document.getElementById('statusProcesso').value = processo.statusProcesso || 'Aceita';
+            document.getElementById('detalhes').value = processo.detalhes || '';
+            document.getElementById('sistema').value = processo.sistema || '';
+
+            // Exibe os detalhes
+            const dataFormatada = processo.dataAutorizacao ? new Date(processo.dataAutorizacao).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+            const statusClass = getStatusClass(processo.statusProcesso || 'N/A');
+
+            const detalhesHTML = `
+                <p class="mb-1 flex items-center gap-2"><i data-lucide="hash" class="w-4 h-4 text-gray-500 dark:text-gray-400"></i><strong class="dark:text-gray-300">Nº Processo:</strong> ${processo.numeroProcesso || 'N/A'}</p>
+                <p class="mb-1 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-gray-500 dark:text-gray-400"></i><strong class="dark:text-gray-300">Data Autorização:</strong> ${dataFormatada}</p>
+                <p class="mb-1 flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-gray-500 dark:text-gray-400"></i><strong class="dark:text-gray-300">Envolvidos:</strong> ${processo.envolvidos || 'N/A'}</p>
+                <p class="mb-1 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-gray-500 dark:text-gray-400"></i><strong class="dark:text-gray-300">Status:</strong> <span class="${statusClass} status-tag">${processo.statusProcesso || 'N/A'}</span></p>
+                <p class="mb-1 flex items-center gap-2"><i data-lucide="monitor" class="w-4 h-4 text-gray-500 dark:text-gray-400"></i><strong class="dark:text-gray-300">Sistema:</strong> ${processo.sistema || 'N/A'}</p>
+                <p class="mt-4 border-t pt-3 border-gray-200 dark:border-gray-700"><strong><i data-lucide="info" class="w-4 h-4 text-gray-500 dark:text-gray-400 inline-block align-text-bottom"></i> Detalhes:</strong> ${processo.detalhes || 'Nenhum detalhe adicional fornecido.'}</p>
+            `;
+            document.getElementById('detalhesProcesso').innerHTML = detalhesHTML;
+
+            // Habilita e reinicia o painel de análise I.A. e os botões de ação
+            document.getElementById('aiAnalysisContainer').classList.remove('hidden');
+            document.getElementById('actionButtons').classList.remove('hidden');
+            document.getElementById('aiAnalysisResult').innerHTML = '<span class="dark:text-gray-300">Pronto para análise. Clique em uma das ferramentas de I.A.</span>';
+            document.getElementById('aiAnalysisResult').classList.remove('bg-red-100', 'p-2', 'rounded');
+            document.getElementById('aiAnalysisResult').classList.remove('ai-result-content');
+            document.getElementById('aiAnalysisHeader').innerHTML = '<i data-lucide="brain" class="w-5 h-5"></i> Resultado da I.A.';
+            
+            // Habilita todos os botões I.A.
+            document.getElementById('analyzeButton').disabled = false;
+            document.getElementById('draftPetitionButton').disabled = false;
+            initIcons(); 
+        }
+
+        /**
+         * Reseta o formulário e limpa o ID oculto.
+         */
+        function resetForm() {
+            document.getElementById('processoForm').reset();
+            document.getElementById('processoId').value = '';
+            document.querySelectorAll('.processo-item').forEach(item => item.classList.remove('selected'));
+            document.getElementById('detalhesProcesso').innerHTML = '<p class="mb-3 dark:text-gray-300">Selecione um processo na lista acima para ver os detalhes e a análise da I.A.</p>';
+            document.getElementById('aiAnalysisContainer').classList.add('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+        }
+
+        /**
+         * Manipula o envio do formulário (criação/edição).
+         */
+        document.getElementById('processoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('processoId').value;
+            const newProcesso = {
+                dataAutorizacao: document.getElementById('dataAutorizacao').value,
+                numeroProcesso: document.getElementById('numeroProcesso').value.trim(),
+                envolvidos: document.getElementById('envolvidos').value.trim(),
+                statusProcesso: document.getElementById('statusProcesso').value,
+                detalhes: document.getElementById('detalhes').value.trim(),
+                sistema: document.getElementById('sistema').value.trim(),
+            };
+
+            let messageTitle = "Processo Adicionado";
+            let messageContent = `Novo processo ${newProcesso.numeroProcesso} adicionado com sucesso.`;
+            let processIdToSelect = id;
+
+            if (id) {
+                // Edição
+                const index = processos.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    processos[index] = { ...processos[index], ...newProcesso };
+                    messageTitle = "Processo Atualizado";
+                    messageContent = `O processo ${newProcesso.numeroProcesso} foi atualizado com sucesso.`;
+                }
+            } else {
+                // Criação
+                processIdToSelect = generateUniqueId();
+                newProcesso.id = processIdToSelect;
+                processos.push(newProcesso);
+            }
+            
+            saveProcessos();
+            renderProcessos();
+            
+            if(processIdToSelect) {
+                setTimeout(() => {
+                    selectProcesso(processIdToSelect);
+                    showModal(messageTitle, messageContent, 'success');
+                }, 100); 
+            } else {
+                 showModal(messageTitle, messageContent, 'success');
+            }
+
+
+        });
+
+        // ========================
+        // IMPORTAÇÃO DE ARQUIVO
+        // ========================
+
+        /**
+         * Lê o arquivo CSV e chama a função de processamento.
+         */
+        function handleFileImport() {
+            const fileInput = document.getElementById('csvFileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                showModal("Arquivo Ausente", "Por favor, selecione um arquivo CSV para importar.", 'info');
+                return;
+            }
+
+            closeNavMenu();
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                try {
+                    const newProcessos = parseCSV(text);
+                    processos = newProcessos;
+                    saveProcessos();
+                    renderProcessos();
+                    resetForm();
+                    document.getElementById('detalhesProcesso').innerHTML = '<p class="mb-3 dark:text-gray-300">Selecione um processo na lista acima para ver os detalhes e a análise da I.A.</p>';
+                    document.getElementById('aiAnalysisContainer').classList.add('hidden');
+                    document.getElementById('actionButtons').classList.add('hidden');
+                    showModal("Importação Concluída", `Foram importados ${newProcessos.length} processos com sucesso!`, 'success');
+                } catch (error) {
+                    showModal("Erro de Processamento CSV", "Não foi possível processar o arquivo CSV. Verifique o formato, especialmente o delimitador.", 'error');
+                    console.error("CSV Parse Error:", error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * Analisa o texto CSV para criar objetos de processo.
+         */
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            if (lines.length <= 1) return [];
+            
+            const headersLine = lines[0];
+            const delimiter = headersLine.includes(';') ? ';' : ','; 
+            
+            const headers = parseLine(headersLine, delimiter);
+            
+            // Mapeamento de colunas baseado nos headers do seu CSV (adaptado para o português)
+            const columnIndex = {
+                dataAutorizacao: headers.findIndex(h => normalizeString(h).includes('data da autorizacao')),
+                numeroProcesso: headers.findIndex(h => normalizeString(h).includes('numero do processo')),
+                envolvidos: headers.findIndex(h => normalizeString(h).includes('envolvidos')),
+                statusProcesso: headers.findIndex(h => normalizeString(h).includes('status')),
+                detalhes: headers.findIndex(h => normalizeString(h).includes('detalhes')),
+                sistema: headers.findIndex(h => normalizeString(h).includes('sistema')),
+            };
+            
+            const data = lines.slice(1).map(line => {
+                const values = parseLine(line, delimiter);
+                
+                if (values.length < headers.length) return null; 
+
+                const processo = {
+                    id: generateUniqueId(),
+                    dataAutorizacao: values[columnIndex.dataAutorizacao] || '',
+                    numeroProcesso: values[columnIndex.numeroProcesso] || '',
+                    envolvidos: values[columnIndex.envolvidos] || '', 
+                    statusProcesso: values[columnIndex.statusProcesso] || 'Em Andamento', 
+                    detalhes: values[columnIndex.detalhes] || '',
+                    sistema: values[columnIndex.sistema] || '',
+                };
+
+                // Converte DD/MM/AAAA para AAAA-MM-DD para compatibilidade com <input type="date">
+                if (processo.dataAutorizacao.includes('/')) {
+                    const parts = processo.dataAutorizacao.split('/');
+                    if (parts.length === 3) {
+                        processo.dataAutorizacao = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
+                
+                return processo.numeroProcesso || processo.envolvidos ? processo : null; 
+            }).filter(p => p !== null);
+
+            return data;
+        }
+        
+        /**
+         * Função auxiliar para lidar com aspas e delimitadores no CSV.
+         */
+        function parseLine(line, delimiter) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            for(let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    values.push(current.trim().replace(/"/g, ''));
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim().replace(/"/g, ''));
+            return values.map(v => v.trim());
+        }
+
+
+        // ===================================
+        // FUNÇÕES LLM (GEMINI) - NOVAS FEATURES
+        // ===================================
+
+        /**
+         * Realiza a chamada para a API do Google Gemini com lógica de retry.
+         */
+        async function chamarGeminiAPI(userQuery, systemInstruction) {
+            const userApiKey = document.getElementById('apiKeyInput').value.trim();
+            const apiKey = userApiKey || ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+            };
+
+            let response;
+            // Lógica de retry com exponential backoff (até 3 vezes)
+            for (let i = 0; i < 3; i++) {
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 403) {
+                         const errorBody = await response.json().catch(() => ({}));
+                         throw new Error(`Erro de Autenticação (403 Proibido). A chave I.A. falhou. Se estiver executando localmente, insira uma chave Gemini válida. Se estiver na plataforma, certifique-se de que o campo "Chave da I.A." esteja vazio.`);
+                    }
+                    
+                    if (response.ok) {
+                        break; 
+                    } else if (response.status === 429 || response.status >= 500) {
+                        if (i === 2) throw new Error(`Erro de Servidor/Limite de Chamadas (${response.status}). Tente novamente mais tarde.`);
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    } else {
+                         const errorBody = await response.json().catch(() => ({}));
+                         throw new Error(`Erro na API (${response.status}): ${errorBody.error?.message || response.statusText}`);
+                    }
+                } catch (error) {
+                    if (i === 2 || error.message.includes("403") || error.message.includes("network")) {
+                        throw error;
+                    }
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            
+            if (!response || !response.ok) {
+                throw new Error("Erro de conexão de rede ou falha persistente na API.");
+            }
+
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (text) {
+                return text;
+            } else {
+                throw new Error("A API retornou uma resposta inesperada ou vazia.");
+            }
+        }
+        
+        /**
+         * Constrói o prompt com base nos detalhes do processo.
+         */
+        function getProcessoDetailsForAI(processo) {
+            const dataFormatada = processo.dataAutorizacao ? new Date(processo.dataAutorizacao).toLocaleDateString('pt-BR') : 'N/A';
+            return `
+                Número do Processo: ${processo.numeroProcesso || 'N/A'}
+                Data de Autorização: ${dataFormatada}
+                Envolvidos: ${processo.envolvidos || 'N/A'}
+                Status Atual: ${processo.statusProcesso || 'N/A'}
+                Sistema: ${processo.sistema || 'N/A'}
+                Detalhes/Movimentação: ${processo.detalhes || 'Nenhum detalhe adicional fornecido.'}
+            `.trim();
+        }
+
+        /**
+         * Dispara a Análise Jurídica com I.A. (Feature 1).
+         */
+        async function analisarProcessoComIA() {
+            const id = document.getElementById('processoId').value;
+            const processo = processos.find(p => p.id === id);
+
+            if (!processo) {
+                showModal("Erro de Seleção", "Nenhum processo foi selecionado para análise.", 'info');
+                return;
+            }
+
+            const analyzeButton = document.getElementById('analyzeButton');
+            const resultElement = document.getElementById('aiAnalysisResult');
+            const headerElement = document.getElementById('aiAnalysisHeader');
+            
+            const originalText = analyzeButton.innerHTML;
+            const processoDetalhes = getProcessoDetailsForAI(processo);
+            
+            const systemInstruction = "Você é um assistente jurídico prestativo e conciso. Sua resposta deve ser formatada como um parágrafo curto e profissional, com foco em ações futuras. Não utilize negrito no cabeçalho de sua resposta.";
+            const userQuery = `Atue como um assistente jurídico de análise processual. Analise os seguintes detalhes de um processo. Foco:
+- Identificar o Status, o Sistema, os Envolvidos.
+- Criar uma linha do tempo sintética dos próximos 3 passos ou a resolução mais provável, baseado apenas nos detalhes fornecidos.
+
+Resposta: Sua análise deve ser um parágrafo profissional e conciso (máximo 4 frases) com uma sugestão clara de próximo passo. Use apenas o português.
+Detalhes do Processo: ${processoDetalhes}`;
+
+
+            try {
+                // Configuração da UI de loading
+                analyzeButton.disabled = true;
+                analyzeButton.innerHTML = `<i data-lucide="bar-chart-3" class="w-5 h-5 animate-spin"></i> Analisando...`;
+                document.getElementById('draftPetitionButton').disabled = true;
+
+                headerElement.innerHTML = '<i data-lucide="bar-chart-3" class="w-5 h-5"></i> Análise Jurídica I.A. (Resumo e Próximo Passo)';
+                resultElement.innerHTML = `
+                    <div class="flex items-center justify-center space-x-2 text-blue-600 dark:text-blue-400">
+                        <div class="loading-dots">
+                            <span class="inline-block w-3 h-3 bg-blue-500 rounded-full"></span>
+                            <span class="inline-block w-3 h-3 bg-blue-500 rounded-full"></span>
+                            <span class="inline-block w-3 h-3 bg-blue-500 rounded-full"></span>
+                        </div>
+                        <span>Processando análise I.A.</span>
+                    </div>
+                `;
+                resultElement.classList.remove('bg-red-100', 'p-2', 'rounded', 'ai-result-content');
+                resultElement.classList.add('dark:text-gray-200'); 
+
+                const analise = await chamarGeminiAPI(userQuery, systemInstruction);
+                
+                // Exibe o resultado (substitui markdown básico por HTML)
+                resultElement.innerHTML = `<div class="ai-result-content">${analise.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>`; 
+                showModal("Análise Concluída", `Análise do processo ${processo.numeroProcesso || 'N/A'} realizada com sucesso.`, 'success');
+
+            } catch (error) {
+                console.error("Erro na Análise I.A.:", error.message);
+                resultElement.innerHTML = `<p class="text-red-700 dark:text-red-400 font-semibold">Falha na Análise I.A.:</p><p class="text-sm mt-1 dark:text-red-300">${error.message}</p>`;
+                resultElement.classList.add('bg-red-100', 'p-2', 'rounded');
+                
+            } finally {
+                analyzeButton.innerHTML = originalText;
+                analyzeButton.disabled = false;
+                document.getElementById('draftPetitionButton').disabled = false;
+                initIcons(); 
+            }
+        }
+        
+        /**
+         * Dispara o Rascunho de Petição Inicial com I.A. (Feature 2).
+         */
+        async function rascunharPeticaoInicialComIA() {
+            const id = document.getElementById('processoId').value;
+            const processo = processos.find(p => p.id === id);
+
+            if (!processo) {
+                showModal("Erro de Seleção", "Nenhum processo foi selecionado para rascunhar a petição.", 'info');
+                return;
+            }
+
+            const draftButton = document.getElementById('draftPetitionButton');
+            const resultElement = document.getElementById('aiAnalysisResult');
+            const headerElement = document.getElementById('aiAnalysisHeader');
+            
+            const originalText = draftButton.innerHTML;
+            const processoDetalhes = getProcessoDetailsForAI(processo);
+
+            const systemInstruction = "Você é um redator jurídico sênior e gera textos formais e concisos. Use quebras de linha para formatar a resposta em blocos legíveis. Não adicione cabeçalhos nem textos introdutórios à resposta, apenas o rascunho.";
+            const userQuery = `Você é um redator jurídico sênior. Com base nos detalhes do processo fornecidos abaixo, elabore um rascunho de uma ementa ou descrição formal para uma petição inicial.
+O rascunho deve ser estruturado e utilizar linguagem técnica e formal em português.
+Estrutura exigida:
+1. Título/Ementa (Curto e Descritivo).
+2. Qualificação das Partes (Requerente vs. Requerido, usando os Envolvidos).
+3. Breve Resumo Fático do Caso (com base nos 'Detalhes').
+4. Pedido Principal/Objeto da Ação (Proposta de ação principal).
+Mantenha o rascunho focado e utilize apenas as informações fornecidas.
+
+Detalhes do Processo: ${processoDetalhes}`;
+
+
+            try {
+                // Configuração da UI de loading
+                draftButton.disabled = true;
+                draftButton.innerHTML = `<i data-lucide="sparkles" class="w-5 h-5 animate-spin"></i> Rascunhando...`;
+                document.getElementById('analyzeButton').disabled = true;
+
+                headerElement.innerHTML = '<i data-lucide="file-text" class="w-5 h-5"></i> Rascunho de Petição Inicial (I.A. ✨)';
+                resultElement.innerHTML = `
+                    <div class="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-400">
+                        <div class="loading-dots">
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                            <span class="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                        </div>
+                        <span>Gerando rascunho de petição...</span>
+                    </div>
+                `;
+                resultElement.classList.remove('bg-red-100', 'p-2', 'rounded');
+                resultElement.classList.add('dark:text-gray-200', 'ai-result-content'); 
+
+                const rascunho = await chamarGeminiAPI(userQuery, systemInstruction);
+                
+                // Exibe o resultado (substitui markdown básico por HTML)
+                // Adiciona um botão de cópia
+                resultElement.innerHTML = `
+                    <div class="ai-result-content">
+                        ${rascunho.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+                    </div>
+                    <button onclick="copyToClipboard(this, '${btoa(rascunho)}')" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition duration-150 shadow-md text-sm flex items-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        Copiar Rascunho
+                    </button>
+                `; 
+                initIcons();
+                showModal("Rascunho Gerado", `O rascunho da petição para o processo ${processo.numeroProcesso || 'N/A'} foi gerado e está disponível para cópia.`, 'success');
+
+            } catch (error) {
+                console.error("Erro no Rascunho I.A.:", error.message);
+                resultElement.innerHTML = `<p class="text-red-700 dark:text-red-400 font-semibold">Falha no Rascunho I.A.:</p><p class="text-sm mt-1 dark:text-red-300">${error.message}</p>`;
+                resultElement.classList.add('bg-red-100', 'p-2', 'rounded');
+                
+            } finally {
+                draftButton.innerHTML = originalText;
+                draftButton.disabled = false;
+                document.getElementById('analyzeButton').disabled = false;
+                initIcons(); 
+            }
+        }
+
+        /**
+         * Copia o texto para a área de transferência.
+         */
+        function copyToClipboard(button, base64Text) {
+            try {
+                const text = atob(base64Text); // Decodifica o texto
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                
+                button.textContent = 'Copiado!';
+                button.classList.add('bg-green-500', 'hover:bg-green-600');
+                button.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+
+                setTimeout(() => {
+                    button.textContent = 'Copiar Rascunho';
+                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    button.classList.add('bg-gray-500', 'hover:bg-gray-600');
+                    initIcons();
+                }, 2000);
+
+            } catch (err) {
+                showModal("Erro ao Copiar", "Não foi possível copiar o texto para a área de transferência. Tente selecionar o texto manualmente.", 'error');
+                console.error('Erro de cópia:', err);
+            }
+        }
+
+
+        // ========================
+        // FUNÇÕES DO NOVO MENU
+        // ========================
+
+        /**
+         * Alterna a visibilidade do menu de navegação.
+         */
+        function toggleNavMenu() {
+            const navMenu = document.getElementById('nav-menu');
+            const hamburgerIcon = document.getElementById('hamburger-icon');
+            const isOpen = navMenu.classList.toggle('open');
+            hamburgerIcon.classList.toggle('active', isOpen);
+            
+            if (isOpen) {
+                document.addEventListener('click', closeMenuOutside, true);
+            } else {
+                document.removeEventListener('click', closeMenuOutside, true);
+            }
+        }
+
+        /**
+         * Fecha explicitamente o menu de navegação.
+         */
+        function closeNavMenu() {
+            const navMenu = document.getElementById('nav-menu');
+            const hamburgerIcon = document.getElementById('hamburger-icon');
+            navMenu.classList.remove('open');
+            hamburgerIcon.classList.remove('active');
+            document.removeEventListener('click', closeMenuOutside, true);
+        }
+
+        /**
+         * Listener para fechar o menu quando o clique ocorre fora dele.
+         */
+        function closeMenuOutside(event) {
+            const navMenu = document.getElementById('nav-menu');
+            const menuToggle = document.getElementById('menu-toggle');
+
+            if (!navMenu.contains(event.target) && !menuToggle.contains(event.target)) {
+                closeNavMenu();
+            }
+        }
+
+
+        // ========================
+        // INICIALIZAÇÃO
+        // ========================
+
+        window.onload = function() {
+            // 1. Aplica o tema salvo (IMPORTANTE: deve vir primeiro)
+            applySavedTheme();
+
+            // 2. Carrega os dados
+            loadProcessos();
+            initIcons(); 
+
+            // 3. Tenta carregar a chave I.A. salva
+            const savedApiKey = localStorage.getItem(LS_API_KEY);
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            if (savedApiKey) {
+                apiKeyInput.value = savedApiKey;
+            }
+            
+            // 4. Salva a chave I.A. no LocalStorage sempre que o campo for alterado
+            apiKeyInput.addEventListener('input', function() {
+                localStorage.setItem(LS_API_KEY, this.value.trim());
+            });
+
+            // 5. Adiciona o listener para o menu
+            document.getElementById('menu-toggle').addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleNavMenu();
+                initIcons();
+            });
+
+            // 6. Garante que os ícones finais sejam criados após o carregamento inicial.
+            initIcons();
+        };
+
+    </script>
+</body>
+</html>
