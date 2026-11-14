@@ -1,0 +1,17 @@
+{
+  "dataCalculo": "2026-11-14",
+  "processo": {
+    "numero": "0000000-00.2023.8.26.0100",
+    "juizo": "1ª Vara Cível do Foro Central",
+    "partes": "Exequente × Executado"
+  },
+  "regime": "TJSP_LEI_14905",
+  "itens": [
+    { "descricao": "Danos materiais (desembolso)", "valor": 12500.00, "dataBase": "2023-03-10", "dataJuros": "2023-06-20" },
+    { "descricao": "Danos morais (Súm. 362/STJ: correção desde o arbitramento)", "valor": 10000.00, "dataBase": "2025-02-14", "dataJuros": "2022-11-05" }
+  ],
+  "despesas": [
+    { "descricao": "Custas iniciais", "valor": 450.00, "data": "2023-06-01" }
+  ],
+  "encargos": { "multa523": true, "honorarios523": true, "honorariosPercentual": 10 }
+}

@@ -1,0 +1,20 @@
+{
+  "dataCalculo": "2026-11-14",
+  "processo": { "numero": "0000000-00.2025.8.26.0000", "juizo": "Vara da Família e Sucessões", "partes": "Alimentando (rep. pela genitora) × Alimentante" },
+  "regime": "TJSP_LEI_14905",
+  "pensao": {
+    "modo": "salario_minimo",
+    "percentualSM": 30,
+    "inicio": "2025-01",
+    "fim": "2026-11",
+    "diaVencimento": 10,
+    "decimoTerceiro": false,
+    "dataAjuizamento": "2026-03-02",
+    "prescricaoSuspensa": true,
+    "pagamentos": [
+      { "competencia": "2025-04", "data": "2025-04-28", "valor": 200.00 },
+      { "competencia": "2025-05", "data": "2025-05-10", "valor": 455.40 }
+    ]
+  },
+  "encargos": { "multa523": false, "honorarios523": false }
+}

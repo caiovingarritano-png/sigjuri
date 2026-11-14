@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Débitos Judiciais — SIGJURI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>if (window.tailwind) tailwind.config = { darkMode: 'class' };</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="calculadora/motor-calculo.js"></script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .card { background: #fff; border-radius: .75rem; box-shadow: 0 4px 12px rgba(0,0,0,.06); padding: 1.25rem; }
+  .dark .card { background: #1f2937; }
+  label { font-size: .8rem; font-weight: 600; color: #4b5563; display: block; margin-bottom: .2rem; }
+  .dark label { color: #d1d5db; }
+  input, select, textarea { width: 100%; padding: .45rem .6rem; border: 1px solid #d1d5db; border-radius: .5rem; background: #fff; color: #111827; font-size: .9rem; }
+  .dark input, .dark select, .dark textarea { background: #374151; border-color: #4b5563; color: #f9fafb; }
+  input[type=checkbox] { width: auto; }
+  .tab { padding: .5rem 1rem; border-radius: .5rem; font-weight: 600; cursor: pointer; }
+  .tab.ativo { background: #4338ca; color: #fff; }
+  table.res { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  table.res th, table.res td { padding: .35rem .5rem; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+  .dark table.res th, .dark table.res td { border-color: #374151; }
+  table.res td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .btn { padding: .5rem 1rem; border-radius: .5rem; font-weight: 600; font-size: .9rem; }
+  .tag { font-size: .65rem; padding: .05rem .35rem; border-radius: .3rem; margin-left: .25rem; }
+  .tag-prisao_3_ultimas, .tag-prisao_vincenda { background: #fee2e2; color: #991b1b; }
+  .tag-expropriacao { background: #e0f2fe; color: #075985; }
+  .tag-possivel_prescricao { background: #fef3c7; color: #92400e; }
+  #memoria { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .75rem; max-height: 50vh; overflow: auto; }
+  @media print { .no-print { display: none !important; } body { background: #fff !important; } .card { box-shadow: none; } }
+</style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+<header class="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow h-16 flex items-center px-4 gap-4 no-print">
+  <a href="index.html.html" class="text-indigo-700 dark:text-indigo-300 font-semibold text-sm">← Processos</a>
+  <div class="text-lg font-bold text-indigo-800 dark:text-indigo-400">Calculadora de Atualização de Débitos Judiciais</div>
+  <button onclick="toggleDark()" class="ml-auto text-sm px-3 py-1 rounded bg-gray-100 dark:bg-gray-700">◐ Tema</button>
+</header>
+
+<main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+
+  <div class="flex gap-2 no-print">
+    <div class="tab ativo" data-tab="debito" onclick="trocarAba('debito')">Débito judicial</div>
+    <div class="tab" data-tab="pensao" onclick="trocarAba('pensao')">Pensão alimentícia</div>
+  </div>
+
+  <!-- DADOS GERAIS -->
+  <section class="card no-print">
+    <h2 class="text-lg font-bold text-indigo-700 dark:text-indigo-300 mb-3">1. Processo e critérios</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="md:col-span-2"><label>Nº do processo</label><input id="procNumero" placeholder="0000000-00.0000.8.26.0000"></div>
+      <div class="md:col-span-2"><label>Juízo</label><input id="procJuizo" placeholder="1ª Vara da Família e Sucessões"></div>
+      <div class="md:col-span-2"><label>Partes</label><input id="procPartes" placeholder="Exequente × Executado"></div>
+      <div><label>Data do cálculo</label><input type="date" id="dataCalculo"></div>
+      <div><label>Regime (preset)</label><select id="regime" onchange="aplicarPreset()"></select></div>
+      <div class="md:col-span-2"><label>Correção monetária</label><select id="correcao"></select></div>
+      <div class="md:col-span-2"><label>Juros de mora</label><select id="juros"><option value="__custom">Taxa fixa personalizada…</option></select></div>
+      <div><label>Taxa fixa (% a.m.)</label><input type="number" step="0.01" id="jurosTaxa" value="1"></div>
+      <div><label>Fase Selic desde</label><input type="date" id="selicDesde" title="Vazio = sem fase Selic, ou desde a mora quando 'Selic até' estiver preenchido"></div>
+      <div><label>Fase Selic até</label><input type="date" id="selicAte"></div>
+      <div class="flex items-end gap-2"><input type="checkbox" id="usarSelic"><label for="usarSelic" class="mb-0">Usar fase Selic</label></div>
+      <div class="flex items-end gap-2"><input type="checkbox" id="pisoNominal" checked><label for="pisoNominal" class="mb-0">Piso nominal na deflação</label></div>
+    </div>
+    <p id="regimeDescricao" class="text-xs text-gray-500 dark:text-gray-400 mt-3"></p>
+  </section>
+
+  <!-- DÉBITO -->
+  <section id="aba-debito" class="card no-print">
+    <h2 class="text-lg font-bold text-indigo-700 dark:text-indigo-300 mb-3">2. Parcelas do débito</h2>
+    <div class="overflow-x-auto">
+      <table class="res" id="tabItens">
+        <thead><tr class="text-left"><th>Descrição</th><th>Valor (R$)</th><th>Data-base (correção)</th><th>Juros desde</th><th>Sem juros</th><th>Pagamentos (data=valor; …)</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <button class="btn bg-gray-200 dark:bg-gray-700 mt-2" onclick="addItem()">+ Parcela</button>
+    <h3 class="font-semibold mt-5 mb-2">Custas e despesas (somente correção)</h3>
+    <table class="res" id="tabDesp"><thead><tr class="text-left"><th>Descrição</th><th>Valor (R$)</th><th>Data do desembolso</th><th></th></tr></thead><tbody></tbody></table>
+    <button class="btn bg-gray-200 dark:bg-gray-700 mt-2" onclick="addDesp()">+ Despesa</button>
+  </section>
+
+  <!-- PENSÃO -->
+  <section id="aba-pensao" class="card no-print hidden">
+    <h2 class="text-lg font-bold text-indigo-700 dark:text-indigo-300 mb-3">2. Pensão alimentícia</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div><label>Forma de fixação</label>
+        <select id="pModo" onchange="atualizaModoPensao()">
+          <option value="salario_minimo">% do salário mínimo</option>
+          <option value="fixo">Valor fixo (R$)</option>
+          <option value="manual">Valores mês a mês</option>
+        </select></div>
+      <div id="pBoxPct"><label>% do salário mínimo</label><input type="number" step="0.01" id="pPct" value="30"></div>
+      <div id="pBoxValor" class="hidden"><label>Valor mensal (R$)</label><input type="number" step="0.01" id="pValor"></div>
+      <div><label>Dia do vencimento</label><input type="number" id="pDia" value="10" min="1" max="31"></div>
+      <div><label>Primeira competência</label><input type="month" id="pInicio"></div>
+      <div><label>Última competência</label><input type="month" id="pFim"></div>
+      <div><label>Data do ajuizamento</label><input type="date" id="pAjuizamento" title="Separa as parcelas do rito da prisão (3 últimas + vincendas) das do rito da expropriação"></div>
+      <div class="flex items-end gap-2"><input type="checkbox" id="p13"><label for="p13" class="mb-0">Incide sobre 13º</label></div>
+      <div class="flex items-end gap-2 md:col-span-2"><input type="checkbox" id="pSuspensa" checked><label for="pSuspensa" class="mb-0">Credor menor sob poder familiar (prescrição suspensa — art. 197, II, CC)</label></div>
+      <div class="flex items-end gap-2 md:col-span-2"><input type="checkbox" id="pExcluirPrescritas"><label for="pExcluirPrescritas" class="mb-0">Excluir parcelas com possível prescrição bienal</label></div>
+      <div id="pBoxManual" class="md:col-span-4 hidden"><label>Valores mês a mês (AAAA-MM=valor, um por linha)</label><textarea id="pManuais" rows="4" placeholder="2025-01=850,00&#10;2025-02=850,00"></textarea></div>
+      <div class="md:col-span-4"><label>Pagamentos parciais (competência AAAA-MM; data DD/MM/AAAA; valor — um por linha)</label>
+        <textarea id="pPagamentos" rows="3" placeholder="2025-03; 15/03/2025; 200,00"></textarea></div>
+    </div>
+  </section>
+
+  <!-- ENCARGOS -->
+  <section class="card no-print">
+    <h2 class="text-lg font-bold text-indigo-700 dark:text-indigo-300 mb-3">3. Encargos</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="flex items-center gap-2"><input type="checkbox" id="eMulta523"><label for="eMulta523" class="mb-0">Multa 10% (art. 523, §1º, CPC)</label></div>
+      <div class="flex items-center gap-2"><input type="checkbox" id="eHon523"><label for="eHon523" class="mb-0">Honorários 10% (art. 523, §1º, CPC)</label></div>
+      <div><label>Honorários sucumbenciais (%)</label><input type="number" step="0.01" id="eHonPct"></div>
+      <div><label>Multa do título (%)</label><input type="number" step="0.01" id="eMultaPct"></div>
+    </div>
+  </section>
+
+  <!-- ÍNDICES -->
+  <section class="card no-print">
+    <div class="flex flex-wrap gap-2 items-center">
+      <button class="btn bg-indigo-600 hover:bg-indigo-700 text-white" onclick="executar()">⟳ Buscar índices do BCB e calcular</button>
+      <button class="btn bg-gray-200 dark:bg-gray-700" onclick="executar(true)">Calcular só com índices manuais/cache</button>
+      <span id="status" class="text-sm text-gray-500"></span>
+    </div>
+    <details class="mt-3">
+      <summary class="text-sm cursor-pointer text-gray-600 dark:text-gray-300">Índices manuais (se o BCB estiver fora do ar ou para conferir com a tabela do tribunal)</summary>
+      <p class="text-xs text-gray-500 mt-2">Formato: <code>INDICE;AAAA-MM;valor%</code> por linha. Ex.: <code>IPCA;2025-09;0,48</code>. Os valores manuais substituem os do BCB.</p>
+      <textarea id="indicesManuais" rows="4" class="mt-1"></textarea>
+    </details>
+  </section>
+
+  <!-- RESULTADO -->
+  <section id="resultado" class="card hidden">
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      <h2 class="text-lg font-bold text-green-700 dark:text-green-300 mr-auto">Resultado</h2>
+      <button class="btn bg-gray-200 dark:bg-gray-700 no-print" onclick="copiarMemoria()">Copiar memória</button>
+      <button class="btn bg-gray-200 dark:bg-gray-700 no-print" onclick="baixarCSV()">CSV (Excel)</button>
+      <button class="btn bg-gray-200 dark:bg-gray-700 no-print" onclick="window.print()">Imprimir/PDF</button>
+    </div>
+    <div id="resumo" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
+    <div class="overflow-x-auto"><table class="res" id="tabRes"></table></div>
+    <div id="ritos" class="mt-4"></div>
+    <div id="avisos" class="mt-4 text-sm"></div>
+    <details class="mt-4"><summary class="cursor-pointer font-semibold">Memória de cálculo completa</summary><div id="memoria" class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded"></div></details>
+  </section>
+
+  <!-- AGENTE IA -->
+  <section id="agente" class="card hidden no-print">
+    <h2 class="text-lg font-bold text-purple-700 dark:text-purple-300 mb-2">Agente calculista (IA)</h2>
+    <p class="text-xs text-gray-500 mb-3">Revisa o cálculo, confere a legislação vigente com busca na web (Google Search via Gemini) e aponta riscos de impugnação. Usa a chave Gemini salva na tela de Processos.</p>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn bg-purple-600 hover:bg-purple-700 text-white" onclick="agente('revisar')">Revisar cálculo e legislação</button>
+      <button class="btn bg-purple-100 dark:bg-purple-900" onclick="agente('peticao')">Minutar petição de cumprimento</button>
+      <button class="btn bg-purple-100 dark:bg-purple-900" onclick="agente('impugnacao')">Pontos para impugnar cálculo adverso</button>
+    </div>
+    <div id="agenteSaida" class="mt-3 text-sm whitespace-pre-wrap"></div>
+  </section>
+
+  <p class="text-xs text-gray-500 text-center pb-6">Índices oficiais obtidos em tempo real da API SGS do Banco Central. Os critérios do título judicial prevalecem sobre os padrões. Confira o resultado antes de protocolar.</p>
+</main>
+
+<script>
+const M = window.MotorCalculo, U = M.util;
+let aba = 'debito', ultimoResultado = null, cacheIndices = {};
+const LS = 'sigjuri_calc_v1';
+
+// ---------- tema ----------
+function toggleDark() { document.documentElement.classList.toggle('dark'); try { localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); } catch (e) {} }
+try { if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+
+// ---------- abas ----------
+function trocarAba(a) {
+  aba = a;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('ativo', t.dataset.tab === a));
+  document.getElementById('aba-debito').classList.toggle('hidden', a !== 'debito');
+  document.getElementById('aba-pensao').classList.toggle('hidden', a !== 'pensao');
+}
+
+// ---------- selects ----------
+function preencherSelects() {
+  const r = document.getElementById('regime');
+  for (const [k, v] of Object.entries(M.REGIMES)) r.add(new Option(v.rotulo, k));
+  const c = document.getElementById('correcao');
+  for (const [k, v] of Object.entries(M.PRESETS_CORRECAO)) c.add(new Option(v.rotulo, k));
+  const j = document.getElementById('juros');
+  for (const [k, v] of Object.entries(M.PRESETS_JUROS)) j.add(new Option(v.rotulo, k), j.options[j.options.length - 1]);
+}
+function aplicarPreset() {
+  const k = document.getElementById('regime').value, p = M.REGIMES[k];
+  document.getElementById('correcao').value = p.correcao;
+  document.getElementById('juros').value = p.juros;
+  document.getElementById('usarSelic').checked = !!p.selic;
+  document.getElementById('selicDesde').value = p.selic && p.selic.desde || '';
+  document.getElementById('selicAte').value = p.selic && p.selic.ate || '';
+  atualizarDescricao();
+}
+function atualizarDescricao() {
+  const k = document.getElementById('regime').value;
+  const desc = {
+    TJSP_LEI_14905: 'Padrão das varas cíveis e de família do TJSP: Tabela Prática (INPC até 08/2024, IPCA-15 desde 09/2024); juros de 1% a.m. até 29/08/2024 e taxa legal (Selic − IPCA) desde 30/08/2024 (Lei 14.905/2024).',
+    CC_LEI_14905: 'Texto literal do CC após a Lei 14.905/2024: IPCA como índice supletivo (art. 389, p. ú.) e taxa legal (art. 406).',
+    STJ_SELIC_CIVEL: 'STJ, Corte Especial, REsp 1.795.982/SP: a taxa do art. 406 (redação antiga) é a Selic, que já engloba correção — sem cumulação. Correção até a mora, Selic até 29/08/2024 e, depois, IPCA + taxa legal.',
+    FAZENDA_EC113: 'Condenações da Fazenda Pública (EC 113/2021, art. 3º): até 11/2021 IPCA-E + juros da poupança (Temas 810/STF e 905/STJ — ajuste a taxa se a poupança rendeu 70% da Selic); desde 12/2021 Selic, uma única vez.',
+    PERSONALIZADO: 'Defina livremente índice, juros e fase Selic conforme o título judicial.'
+  };
+  document.getElementById('regimeDescricao').textContent = desc[k] || '';
+}
+
+// ---------- linhas dinâmicas ----------
+const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function addItem(d = {}) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input class="i-desc" value="${esc(d.descricao)}" placeholder="Condenação / parcela"></td>
+    <td><input class="i-valor" type="number" step="0.01" value="${esc(d.valor)}"></td>
+    <td><input class="i-base" type="date" value="${esc(d.dataBase)}"></td>
+    <td><input class="i-juros" type="date" value="${esc(d.dataJuros)}" title="Vazio = mesma data-base. Ex.: citação (art. 405 CC) ou evento danoso (Súm. 54/STJ)"></td>
+    <td class="text-center"><input class="i-semjuros" type="checkbox" ${d.semJuros ? 'checked' : ''}></td>
+    <td><input class="i-pag" value="${esc(d.pag)}" placeholder="15/03/2025=500,00"></td>
+    <td><button class="text-red-600" onclick="this.closest('tr').remove()">✕</button></td>`;
+  document.querySelector('#tabItens tbody').appendChild(tr);
+}
+function addDesp(d = {}) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input class="d-desc" value="${esc(d.descricao)}" placeholder="Custas iniciais"></td>
+    <td><input class="d-valor" type="number" step="0.01" value="${esc(d.valor)}"></td>
+    <td><input class="d-data" type="date" value="${esc(d.data)}"></td>
+    <td><button class="text-red-600" onclick="this.closest('tr').remove()">✕</button></td>`;
+  document.querySelector('#tabDesp tbody').appendChild(tr);
+}
+function atualizaModoPensao() {
+  const m = document.getElementById('pModo').value;
+  document.getElementById('pBoxPct').classList.toggle('hidden', m !== 'salario_minimo');
+  document.getElementById('pBoxValor').classList.toggle('hidden', m !== 'fixo');
+  document.getElementById('pBoxManual').classList.toggle('hidden', m !== 'manual');
+}
+
+// ---------- leitura do formulário ----------
+const num = (s) => { if (s == null || s === '') return 0; s = String(s).trim(); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); return parseFloat(s) || 0; };
+const val = (id) => document.getElementById(id).value;
+
+function lerConfig() {
+  let juros = val('juros');
+  if (juros === '__custom') juros = [{ tipo: 'fixa', taxa: num(val('jurosTaxa')) }];
+  const regime = { rotulo: M.REGIMES[val('regime')].rotulo, correcao: val('correcao'), juros,
+    selic: document.getElementById('usarSelic').checked ? { desde: val('selicDesde') || null, ate: val('selicAte') || null } : null,
+    pisoNominal: document.getElementById('pisoNominal').checked };
+  const cfg = {
+    dataCalculo: val('dataCalculo'), regime,
+    processo: { numero: val('procNumero'), juizo: val('procJuizo'), partes: val('procPartes') },
+    encargos: { multa523: document.getElementById('eMulta523').checked, honorarios523: document.getElementById('eHon523').checked,
+      honorariosPercentual: num(val('eHonPct')), multaPercentual: num(val('eMultaPct')) },
+    despesas: [...document.querySelectorAll('#tabDesp tbody tr')].map(tr => ({
+      descricao: tr.querySelector('.d-desc').value, valor: num(tr.querySelector('.d-valor').value), data: tr.querySelector('.d-data').value })).filter(d => d.valor && d.data)
+  };
+  if (aba === 'debito') {
+    cfg.itens = [...document.querySelectorAll('#tabItens tbody tr')].map(tr => ({
+      descricao: tr.querySelector('.i-desc').value, valor: num(tr.querySelector('.i-valor').value),
+      dataBase: tr.querySelector('.i-base').value, dataJuros: tr.querySelector('.i-juros').value || undefined,
+      semJuros: tr.querySelector('.i-semjuros').checked,
+      pagamentos: tr.querySelector('.i-pag').value.split(';').map(s => s.trim()).filter(Boolean).map(s => { const [d, v] = s.split('='); return { data: d.trim(), valor: num(v) }; })
+    })).filter(i => i.valor && i.dataBase);
+    if (!cfg.itens.length) throw new Error('Informe ao menos uma parcela com valor e data-base.');
+  } else {
+    const manuais = {};
+    val('pManuais').split('\n').map(l => l.trim()).filter(Boolean).forEach(l => { const [m, v] = l.split('='); manuais[m.trim()] = num(v); });
+    cfg.pensao = { modo: val('pModo'), percentualSM: num(val('pPct')), valor: num(val('pValor')), valoresManuais: manuais,
+      inicio: val('pInicio'), fim: val('pFim'), diaVencimento: parseInt(val('pDia'), 10),
+      decimoTerceiro: document.getElementById('p13').checked, dataAjuizamento: val('pAjuizamento') || null,
+      prescricaoSuspensa: document.getElementById('pSuspensa').checked, excluirPrescritas: document.getElementById('pExcluirPrescritas').checked,
+      pagamentos: val('pPagamentos').split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [c, d, v] = l.split(';').map(s => s.trim()); return { competencia: c, data: d, valor: num(v) }; }) };
+    if (!cfg.pensao.inicio || !cfg.pensao.fim) throw new Error('Informe a primeira e a última competência da pensão.');
+  }
+  if (!cfg.dataCalculo) throw new Error('Informe a data do cálculo.');
+  return cfg;
+}
+function lerIndicesManuais() {
+  const out = {};
+  val('indicesManuais').split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+    const [n, m, v] = l.split(';').map(s => s.trim()); if (!n || !m) return;
+    (out[n.toUpperCase()] = out[n.toUpperCase()] || {})[m] = num(v);
+  });
+  return out;
+}
+
+// ---------- execução ----------
+async function executar(offline) {
+  const st = document.getElementById('status');
+  try {
+    const cfg = lerConfig(); salvarForm();
+    let res;
+    if (offline) {
+      const idx = { ...cacheIndices }; for (const [k, v] of Object.entries(lerIndicesManuais())) idx[k] = { ...(idx[k] || {}), ...v };
+      res = cfg.pensao ? M.calcularPensao(cfg, idx) : M.calcular(cfg, idx);
+    } else {
+      st.textContent = 'Consultando Banco Central…';
+      const series = M.seriesNecessarias(cfg), de = M.mesInicialNecessario(cfg), ate = U.mesDe(cfg.dataCalculo);
+      const busca = await M.buscarIndices(series, de, ate, { onProgresso: (n, ok) => st.textContent = (ok ? '✓ ' : '✗ ') + n + '…' });
+      cacheIndices = { ...cacheIndices }; for (const [k, v] of Object.entries(busca.indices)) cacheIndices[k] = { ...(cacheIndices[k] || {}), ...v };
+      const idx = { ...cacheIndices }; for (const [k, v] of Object.entries(lerIndicesManuais())) idx[k] = { ...(idx[k] || {}), ...v };
+      res = cfg.pensao ? M.calcularPensao(cfg, idx) : M.calcular(cfg, idx);
+      for (const [n, e] of Object.entries(busca.erros)) res.avisos.unshift('Não foi possível obter ' + n + ' do BCB (' + e + '). Use os índices manuais.');
+      res.fonteIndices = { fonte: busca.fonte, consultadoEm: busca.consultadoEm };
+      try { localStorage.setItem(LS + '_idx', JSON.stringify(cacheIndices)); } catch (e) {}
+    }
+    ultimoResultado = res; renderResultado(res);
+    st.textContent = 'Cálculo concluído' + (res.fonteIndices ? ' — índices BCB consultados em ' + new Date(res.fonteIndices.consultadoEm).toLocaleString('pt-BR') : '') + '.';
+  } catch (e) { st.textContent = '⚠ ' + e.message; console.error(e); }
+}
+
+function renderResultado(r) {
+  document.getElementById('resultado').classList.remove('hidden');
+  document.getElementById('agente').classList.remove('hidden');
+  const card = (t, v, c = 'text-gray-900 dark:text-gray-100') => `<div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-900"><div class="text-xs text-gray-500">${t}</div><div class="text-lg font-bold ${c}">${v}</div></div>`;
+  document.getElementById('resumo').innerHTML = card('Valor original', U.brl(r.totais.valorOriginal)) + card('Correção + Selic', U.brl(r.totais.correcao + r.totais.selic)) +
+    card('Juros', U.brl(r.totais.juros)) + card('Total geral', U.brl(r.totalGeral), 'text-green-700 dark:text-green-400');
+  let h = '<thead><tr class="text-left"><th>#</th><th>Descrição</th><th>Data-base</th><th>Original</th><th>Pago</th><th>Fator</th><th>Correção</th><th>Juros %</th><th>Juros</th><th>Selic</th><th>Total</th></tr></thead><tbody>';
+  for (const it of r.itens) h += `<tr><td>${it.n}</td><td>${esc(it.descricao)}${(it.tags || []).map(t => `<span class="tag tag-${t}">${t.replace(/_/g, ' ')}</span>`).join('')}</td><td>${U.dataBR(it.dataBase)}</td>
+    <td class="n">${U.brl(it.valorOriginal)}</td><td class="n">${U.brl(it.totalPago || 0)}</td><td class="n">${it.fatorCorrecao.toFixed(6)}</td><td class="n">${U.brl(it.correcao)}</td>
+    <td class="n">${U.pct(it.jurosPct)}</td><td class="n">${U.brl(it.juros)}</td><td class="n">${U.brl(it.selic)}</td><td class="n font-semibold">${U.brl(it.total)}</td></tr>`;
+  h += `<tr class="font-bold"><td></td><td>Débito atualizado</td><td></td><td class="n">${U.brl(r.totais.valorOriginal)}</td><td class="n">${U.brl(r.totais.pago)}</td><td></td><td class="n">${U.brl(r.totais.correcao)}</td><td></td><td class="n">${U.brl(r.totais.juros)}</td><td class="n">${U.brl(r.totais.selic)}</td><td class="n">${U.brl(r.totais.debito)}</td></tr>`;
+  for (const d of r.despesas) h += `<tr><td></td><td>${esc(d.descricao)} (despesa)</td><td>${U.dataBR(d.data)}</td><td class="n">${U.brl(d.valorOriginal)}</td><td></td><td class="n">${d.fatorCorrecao.toFixed(6)}</td><td colspan="4"></td><td class="n">${U.brl(d.total)}</td></tr>`;
+  for (const e of r.encargos) h += `<tr><td></td><td colspan="9">${e.rotulo}</td><td class="n">${U.brl(e.valor)}</td></tr>`;
+  h += `<tr class="font-bold text-green-700 dark:text-green-400"><td></td><td colspan="9">TOTAL GERAL</td><td class="n">${U.brl(r.totalGeral)}</td></tr></tbody>`;
+  document.getElementById('tabRes').innerHTML = h;
+  document.getElementById('ritos').innerHTML = r.ritos ? `<h3 class="font-semibold mb-1">Separação por rito (pensão)</h3>
+    <ul class="text-sm list-disc ml-5"><li>Rito da prisão (art. 528, §§3º e 7º, CPC; Súm. 309/STJ): <b>${U.brl(r.ritos.prisao)}</b> — 3 últimas anteriores ao ajuizamento ${U.brl(r.ritos.prisao3Ultimas)} + vencidas no curso ${U.brl(r.ritos.prisaoVincendas)}</li>
+    <li>Rito da expropriação (art. 528, §8º, c/c art. 523, CPC): <b>${U.brl(r.ritos.expropriacao)}</b></li>
+    ${r.ritos.possivelPrescricao ? `<li class="text-amber-700">Possível prescrição bienal (art. 206, §2º, CC): ${U.brl(r.ritos.possivelPrescricao)}</li>` : ''}</ul>` : '';
+  document.getElementById('avisos').innerHTML = r.avisos.length ? '<h3 class="font-semibold mb-1 text-amber-700">Avisos</h3><ul class="list-disc ml-5 text-amber-800 dark:text-amber-300">' + r.avisos.map(a => `<li>${a}</li>`).join('') + '</ul>' : '';
+  document.getElementById('memoria').textContent = M.gerarMemoriaMarkdown(r);
+}
+
+function copiarMemoria() { if (ultimoResultado) navigator.clipboard.writeText(M.gerarMemoriaMarkdown(ultimoResultado)); }
+function baixarCSV() {
+  if (!ultimoResultado) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([M.gerarCSV(ultimoResultado)], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'calculo-' + (ultimoResultado.processo.numero || 'debito').replace(/[^\w.-]/g, '_') + '-' + ultimoResultado.dataCalculo + '.csv';
+  a.click();
+}
+
+// ---------- agente IA (Gemini + Google Search) ----------
+const SISTEMA_AGENTE = `Você é um perito contador judicial brasileiro (calculista) e advogado especialista em execução civil e de alimentos.
+Regras: (1) Os critérios do título judicial prevalecem. (2) Verifique com busca na web a legislação e jurisprudência VIGENTES na data de hoje
+(CC arts. 389 e 406 com redação da Lei 14.905/2024; Res. CMN 5.171/2024; Tabela Prática do tribunal; EC 113/2021; CPC arts. 523, 528 e 911;
+Súmulas 43, 54, 309 e 362 do STJ; REsp 1.795.982; Temas 810/STF e 905/STJ) e informe se houve alteração.
+(3) Nunca invente número de processo, súmula ou artigo; se não conseguir confirmar, diga. (4) Aponte erros, riscos de impugnação e alternativas de critério com impacto estimado.
+(5) Responda em português, de forma objetiva, com seções curtas.`;
+async function agente(modo) {
+  if (!ultimoResultado) return;
+  const out = document.getElementById('agenteSaida');
+  let key = ''; try { key = localStorage.getItem('gemini_api_key') || ''; } catch (e) {}
+  if (!key) key = prompt('Chave da API Gemini (fica salva neste navegador):') || '';
+  if (!key) return; try { localStorage.setItem('gemini_api_key', key); } catch (e) {}
+  const tarefas = {
+    revisar: 'Revise criticamente este cálculo. Confirme se os índices e marcos legais aplicados estão corretos e vigentes hoje, se os termos iniciais de correção e juros estão adequados e liste ajustes recomendados.',
+    peticao: 'Redija minuta de petição de cumprimento de sentença (ou de execução de alimentos, se for pensão — indicando o rito adequado para cada grupo de parcelas) com base nesta memória de cálculo. Use placeholders [ ] para dados ausentes.',
+    impugnacao: 'Considere que este é o cálculo apresentado pela parte contrária. Liste, em ordem de impacto financeiro, os pontos impugnáveis (art. 525, §1º, V, e §4º, CPC), com fundamento.'
+  };
+  out.textContent = 'Consultando agente…';
+  try {
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: SISTEMA_AGENTE }] }, tools: [{ google_search: {} }],
+        contents: [{ parts: [{ text: tarefas[modo] + '\n\nData de hoje: ' + new Date().toLocaleDateString('pt-BR') + '\n\nMEMÓRIA DE CÁLCULO:\n' + M.gerarMemoriaMarkdown(ultimoResultado) }] }] })
+    });
+    const j = await resp.json();
+    if (!resp.ok) throw new Error(j.error && j.error.message || ('HTTP ' + resp.status));
+    const cand = j.candidates && j.candidates[0];
+    let txt = (cand && cand.content && cand.content.parts || []).map(p => p.text || '').join('');
+    const fontes = cand && cand.groundingMetadata && cand.groundingMetadata.groundingChunks || [];
+    if (fontes.length) txt += '\n\nFontes consultadas:\n' + fontes.map(f => '• ' + (f.web && (f.web.title + ' — ' + f.web.uri))).join('\n');
+    out.textContent = txt || 'Sem resposta.';
+  } catch (e) { out.textContent = 'Erro no agente: ' + e.message; }
+}
+
+// ---------- persistência do formulário ----------
+function salvarForm() {
+  const ids = ['procNumero','procJuizo','procPartes','dataCalculo','regime','correcao','juros','jurosTaxa','selicDesde','selicAte','pModo','pPct','pValor','pDia','pInicio','pFim','pAjuizamento','pManuais','pPagamentos','eHonPct','eMultaPct','indicesManuais'];
+  const checks = ['usarSelic','pisoNominal','p13','pSuspensa','pExcluirPrescritas','eMulta523','eHon523'];
+  const d = { aba, v: {}, c: {} };
+  ids.forEach(i => d.v[i] = val(i)); checks.forEach(i => d.c[i] = document.getElementById(i).checked);
+  d.itens = [...document.querySelectorAll('#tabItens tbody tr')].map(tr => ({ descricao: tr.querySelector('.i-desc').value, valor: tr.querySelector('.i-valor').value,
+    dataBase: tr.querySelector('.i-base').value, dataJuros: tr.querySelector('.i-juros').value, semJuros: tr.querySelector('.i-semjuros').checked, pag: tr.querySelector('.i-pag').value }));
+  d.desp = [...document.querySelectorAll('#tabDesp tbody tr')].map(tr => ({ descricao: tr.querySelector('.d-desc').value, valor: tr.querySelector('.d-valor').value, data: tr.querySelector('.d-data').value }));
+  try { localStorage.setItem(LS, JSON.stringify(d)); } catch (e) {}
+}
+function carregarForm() {
+  let d = null; try { d = JSON.parse(localStorage.getItem(LS) || 'null'); cacheIndices = JSON.parse(localStorage.getItem(LS + '_idx') || '{}'); } catch (e) {}
+  if (!d) { addItem(); addDesp(); return false; }
+  Object.entries(d.v || {}).forEach(([k, v]) => { const el = document.getElementById(k); if (el) el.value = v; });
+  Object.entries(d.c || {}).forEach(([k, v]) => { const el = document.getElementById(k); if (el) el.checked = v; });
+  (d.itens && d.itens.length ? d.itens : [{}]).forEach(addItem);
+  (d.desp && d.desp.length ? d.desp : [{}]).forEach(addDesp);
+  trocarAba(d.aba || 'debito'); atualizaModoPensao();
+  return true;
+}
+
+// ---------- init ----------
+preencherSelects();
+document.getElementById('dataCalculo').value = new Date().toISOString().slice(0, 10);
+if (!carregarForm()) { document.getElementById('regime').value = 'TJSP_LEI_14905'; aplicarPreset(); }
+else atualizarDescricao();
+</script>
+</body>
+</html>

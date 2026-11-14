@@ -1,0 +1,15 @@
+{
+  "dataCalculo": "2026-11-14",
+  "processo": { "numero": "exemplo — título com IGP-M e juros de 1% a.m. desde a citação" },
+  "regime": {
+    "rotulo": "Conforme sentença: IGP-M + juros 1% a.m. até 29/08/2024 e taxa legal depois",
+    "correcao": "IGP-M",
+    "juros": [ { "ate": "2024-08-29", "tipo": "fixa", "taxa": 1 }, { "tipo": "taxa_legal" } ],
+    "selic": null,
+    "pisoNominal": true
+  },
+  "itens": [
+    { "descricao": "Aluguéis vencidos — 01/2024", "valor": 3200, "dataBase": "2024-01-05", "dataJuros": "2024-01-05",
+      "pagamentos": [ { "data": "2024-06-10", "valor": 1500 } ] }
+  ]
+}
