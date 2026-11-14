@@ -180,6 +180,119 @@
         </div>
     </div>
 
+    <!-- Modal da Calculadora de Correção Monetária e Juros --><div id="calcModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 hidden flex items-start justify-center p-2 md:p-4 overflow-y-auto">
+        <div class="card-bg rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-4xl my-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl md:text-2xl font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                    <i data-lucide="calculator" class="w-6 h-6"></i>
+                    Correção Monetária e Juros
+                </h3>
+                <button onclick="closeCalcModal()" aria-label="Fechar" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="calcForm" onsubmit="event.preventDefault(); calcularAtualizacao();" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label for="calcReferencia" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Referência (processo / descrição)</label>
+                    <input type="text" id="calcReferencia" placeholder="Ex.: 0001234-56.2024.8.26.0100 – aluguéis em atraso" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcValor" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor original (R$)</label>
+                    <input type="text" id="calcValor" inputmode="decimal" required placeholder="10.000,00" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcIndice" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Índice de correção</label>
+                    <select id="calcIndice" onchange="onCalcIndiceChange()" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                        <option value="ipca">IPCA (IBGE) – padrão do CC após Lei 14.905/2024</option>
+                        <option value="ipcae">IPCA-E (IBGE)</option>
+                        <option value="inpc">INPC (IBGE)</option>
+                        <option value="igpm">IGP-M (FGV)</option>
+                        <option value="selic">SELIC (correção + juros – EC 113/2021)</option>
+                        <option value="nenhum">Sem correção</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="calcDataInicial" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data inicial da correção (vencimento / evento)</label>
+                    <input type="date" id="calcDataInicial" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcDataFinal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data final (cálculo)</label>
+                    <input type="date" id="calcDataFinal" required class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcJuros" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Juros de mora</label>
+                    <select id="calcJuros" onchange="onCalcJurosChange()" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                        <option value="1am">1% ao mês, simples, pro rata die</option>
+                        <option value="legal">Taxa legal (SELIC − IPCA) – art. 406 CC, Lei 14.905/2024</option>
+                        <option value="custom">Outra taxa mensal simples</option>
+                        <option value="nenhum">Sem juros</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="calcDataJuros" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Juros a partir de (citação / vencimento)</label>
+                    <input type="date" id="calcDataJuros" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Em branco = mesma data inicial da correção.</p>
+                </div>
+                <div id="calcTaxaCustomWrap" class="hidden">
+                    <label for="calcTaxaCustom" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Taxa de juros (% ao mês)</label>
+                    <input type="text" id="calcTaxaCustom" inputmode="decimal" placeholder="0,5" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcMulta" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Multa (%) sobre o valor atualizado</label>
+                    <input type="text" id="calcMulta" inputmode="decimal" placeholder="0 (ex.: 10 do art. 523 CPC)" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div>
+                    <label for="calcHonorarios" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Honorários (%) sobre o valor atualizado</label>
+                    <input type="text" id="calcHonorarios" inputmode="decimal" placeholder="0 (ex.: 10)" class="mt-1 block w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                </div>
+                <div class="md:col-span-2 flex flex-col md:flex-row gap-3">
+                    <button type="submit" id="calcButton" class="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md flex items-center justify-center gap-2">
+                        <i data-lucide="calculator" class="w-5 h-5"></i>
+                        Calcular
+                    </button>
+                    <button type="button" onclick="limparCalculadora()" class="px-4 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition duration-150 shadow-md flex items-center justify-center gap-2">
+                        <i data-lucide="eraser" class="w-5 h-5"></i>
+                        Limpar
+                    </button>
+                </div>
+            </form>
+
+            <div id="calcAviso" class="hidden mt-4 p-3 rounded-lg text-sm bg-yellow-50 text-yellow-800 border border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700"></div>
+
+            <div id="calcResultado" class="hidden mt-6">
+                <div id="calcResumo" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                <div class="mt-4 flex flex-col md:flex-row gap-3">
+                    <button type="button" id="calcCopyButton" onclick="copiarMemoriaCalculo()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition duration-150 shadow-md text-sm flex items-center justify-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        Copiar memória de cálculo
+                    </button>
+                </div>
+                <h4 class="mt-6 mb-2 font-semibold text-gray-700 dark:text-gray-200">Memória de cálculo mês a mês</h4>
+                <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <table class="min-w-full text-sm text-gray-700 dark:text-gray-200">
+                        <thead class="bg-gray-100 dark:bg-gray-700">
+                            <tr>
+                                <th class="text-left p-2">Mês</th>
+                                <th class="text-right p-2">Índice (%)</th>
+                                <th class="text-right p-2">Fator acumulado</th>
+                                <th class="text-right p-2">Valor corrigido</th>
+                                <th class="text-right p-2">Juros no mês (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calcTabela" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    </table>
+                </div>
+                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Índices obtidos em tempo real no Sistema Gerenciador de Séries Temporais do Banco Central (SGS): IPCA 433, IPCA-E 10764, INPC 188, IGP-M 189, SELIC mensal 4390.
+                    Convenção: a correção aplica os índices mensais do mês da data inicial até o mês anterior à data final (mesmo critério das tabelas práticas dos tribunais).
+                    Juros de 1% ou taxa personalizada: simples, pro rata die (dias ÷ 30), sobre o valor corrigido. Taxa legal: soma mensal de (SELIC − IPCA), com resultado negativo considerado zero (art. 406, §§ 1º e 3º, CC).
+                    Confira sempre o critério fixado no título judicial ou no contrato.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- CABEÇALHO FIXO COM MENU --><header class="sticky top-0 left-0 w-full bg-white dark:bg-gray-800 shadow-md z-40 h-16 flex items-center px-4 transition duration-300">
         <button id="menu-toggle" aria-label="Menu de Navegação" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
             <div class="hamburger-icon" id="hamburger-icon">
@@ -208,6 +321,12 @@
         <a href="javascript:void(0)" onclick="clearAllData(); closeNavMenu();" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-red-100 dark:hover:bg-red-700/50 transition duration-150">
             <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i>
             <span>Limpar Todos os Dados</span>
+        </a>
+
+        <!-- Cálculos --><div class="p-2 text-sm font-semibold text-gray-500 border-t dark:border-gray-600 mt-2 pt-2">Cálculos</div>
+        <a href="javascript:void(0)" onclick="openCalcModal(); closeNavMenu();" class="flex items-center gap-3 p-2 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-700/50 transition duration-150">
+            <i data-lucide="calculator" class="w-5 h-5 text-indigo-500"></i>
+            <span>Correção Monetária e Juros</span>
         </a>
         
         <!-- Acessos Rápidos (Sistemas SP) --><div class="p-2 text-sm font-semibold text-gray-500 border-t dark:border-gray-600 mt-2 pt-2">Acessos Rápidos (Sistemas SP)</div>
@@ -1201,6 +1320,322 @@ Detalhes do Processo: ${processoDetalhes}`;
 
 
         // ========================
+        // CALCULADORA DE CORREÇÃO MONETÁRIA E JUROS
+        // ========================
+
+        // Códigos das séries no SGS do Banco Central (variação % mensal)
+        const SGS_SERIES = {
+            ipca:  { codigo: 433,   nome: 'IPCA' },
+            ipcae: { codigo: 10764, nome: 'IPCA-E' },
+            inpc:  { codigo: 188,   nome: 'INPC' },
+            igpm:  { codigo: 189,   nome: 'IGP-M' },
+            selic: { codigo: 4390,  nome: 'SELIC' }
+        };
+        const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const sgsCache = {};
+        let ultimaMemoriaCalculo = '';
+
+        function hojeISO() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function openCalcModal() {
+            const modal = document.getElementById('calcModal');
+            if (!document.getElementById('calcDataFinal').value) {
+                document.getElementById('calcDataFinal').value = hojeISO();
+            }
+            const ref = document.getElementById('calcReferencia');
+            const numProc = document.getElementById('numeroProcesso').value.trim();
+            if (!ref.value && numProc) ref.value = numProc;
+            modal.classList.remove('hidden');
+            initIcons();
+        }
+
+        function closeCalcModal() {
+            document.getElementById('calcModal').classList.add('hidden');
+        }
+
+        function limparCalculadora() {
+            document.getElementById('calcForm').reset();
+            document.getElementById('calcDataFinal').value = hojeISO();
+            document.getElementById('calcResultado').classList.add('hidden');
+            document.getElementById('calcAviso').classList.add('hidden');
+            onCalcIndiceChange();
+            onCalcJurosChange();
+            ultimaMemoriaCalculo = '';
+        }
+
+        function onCalcIndiceChange() {
+            const juros = document.getElementById('calcJuros');
+            if (document.getElementById('calcIndice').value === 'selic') {
+                // A SELIC já engloba correção e juros: não acumular outra taxa (bis in idem).
+                juros.value = 'nenhum';
+                juros.disabled = true;
+            } else {
+                juros.disabled = false;
+            }
+            onCalcJurosChange();
+        }
+
+        function onCalcJurosChange() {
+            const tipo = document.getElementById('calcJuros').value;
+            document.getElementById('calcTaxaCustomWrap').classList.toggle('hidden', tipo !== 'custom');
+        }
+
+        /** Converte "1.234,56" ou "1234.56" em número. */
+        function parseNumeroBR(texto) {
+            if (texto === undefined || texto === null) return NaN;
+            let s = String(texto).trim().replace(/[R$\s%]/g, '');
+            if (s === '') return NaN;
+            if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+            return Number(s);
+        }
+
+        function formatBRL(v) {
+            return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function formatNum(v, casas) {
+            return v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+        }
+
+        /** Chave de mês "AAAA-MM" a partir de uma data ISO. */
+        function mesDe(iso) { return iso.slice(0, 7); }
+
+        function proximoMes(chave) {
+            let [a, m] = chave.split('-').map(Number);
+            m++; if (m > 12) { m = 1; a++; }
+            return `${a}-${String(m).padStart(2, '0')}`;
+        }
+
+        /** Lista de meses de [inicio, fim) no formato AAAA-MM. */
+        function listaMeses(inicio, fimExclusivo) {
+            const meses = [];
+            for (let m = inicio; m < fimExclusivo; m = proximoMes(m)) meses.push(m);
+            return meses;
+        }
+
+        function rotuloMes(chave) {
+            const [a, m] = chave.split('-').map(Number);
+            return `${MESES_ABREV[m - 1]}/${a}`;
+        }
+
+        function isoParaBR(iso) {
+            const [a, m, d] = iso.split('-');
+            return `${d}/${m}/${a}`;
+        }
+
+        /** Busca a série mensal no SGS/BCB e devolve um mapa { 'AAAA-MM': variação% }. */
+        async function buscarSerieSGS(chaveIndice, mesInicio, mesFim) {
+            const serie = SGS_SERIES[chaveIndice];
+            const cacheKey = `${serie.codigo}|${mesInicio}|${mesFim}`;
+            if (sgsCache[cacheKey]) return sgsCache[cacheKey];
+
+            const [ai, mi] = mesInicio.split('-');
+            const [af, mf] = mesFim.split('-');
+            const ultimoDia = new Date(Number(af), Number(mf), 0).getDate();
+            const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie.codigo}/dados?formato=json` +
+                `&dataInicial=01/${mi}/${ai}&dataFinal=${ultimoDia}/${mf}/${af}`;
+
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                // O SGS responde 404 quando não há nenhum dado no intervalo (ex.: mês corrente ainda não divulgado).
+                if (resp.status === 404) { sgsCache[cacheKey] = {}; return {}; }
+                throw new Error(`Banco Central respondeu ${resp.status} para a série ${serie.nome}.`);
+            }
+            const dados = await resp.json();
+            const mapa = {};
+            if (Array.isArray(dados)) {
+                dados.forEach(item => {
+                    const [d, m, a] = item.data.split('/');
+                    mapa[`${a}-${m}`] = Number(item.valor);
+                });
+            }
+            sgsCache[cacheKey] = mapa;
+            return mapa;
+        }
+
+        async function calcularAtualizacao() {
+            const aviso = document.getElementById('calcAviso');
+            const resultado = document.getElementById('calcResultado');
+            const botao = document.getElementById('calcButton');
+            aviso.classList.add('hidden');
+            resultado.classList.add('hidden');
+            const avisos = [];
+
+            const referencia = document.getElementById('calcReferencia').value.trim();
+            const valor = parseNumeroBR(document.getElementById('calcValor').value);
+            const indice = document.getElementById('calcIndice').value;
+            const dataIni = document.getElementById('calcDataInicial').value;
+            const dataFim = document.getElementById('calcDataFinal').value;
+            const tipoJuros = indice === 'selic' ? 'nenhum' : document.getElementById('calcJuros').value;
+            const dataJuros = document.getElementById('calcDataJuros').value || dataIni;
+            const multaPct = parseNumeroBR(document.getElementById('calcMulta').value) || 0;
+            const honorPct = parseNumeroBR(document.getElementById('calcHonorarios').value) || 0;
+            const taxaCustom = parseNumeroBR(document.getElementById('calcTaxaCustom').value);
+
+            if (!(valor > 0)) return showModal('Valor inválido', 'Informe o valor original, por exemplo 10.000,00.', 'error');
+            if (!dataIni || !dataFim) return showModal('Datas obrigatórias', 'Informe a data inicial e a data final.', 'error');
+            if (dataFim < dataIni) return showModal('Datas inválidas', 'A data final deve ser posterior à data inicial.', 'error');
+            if (tipoJuros !== 'nenhum' && dataJuros > dataFim) return showModal('Datas inválidas', 'A data de início dos juros é posterior à data final.', 'error');
+            if (tipoJuros === 'custom' && !(taxaCustom >= 0)) return showModal('Taxa inválida', 'Informe a taxa de juros mensal, por exemplo 0,5.', 'error');
+
+            const mesFimExcl = mesDe(dataFim);
+            const mesesCorrecao = indice === 'nenhum' ? [] : listaMeses(mesDe(dataIni), mesFimExcl);
+            const mesesJurosLegal = tipoJuros === 'legal' ? listaMeses(mesDe(dataJuros), mesFimExcl) : [];
+
+            const textoOriginal = botao.innerHTML;
+            botao.disabled = true;
+            botao.innerHTML = 'Consultando índices do Banco Central...';
+
+            try {
+                // 1. Busca das séries necessárias
+                let serieCorrecao = {}, serieSelic = {}, serieIpca = {};
+                if (mesesCorrecao.length) {
+                    serieCorrecao = await buscarSerieSGS(indice, mesesCorrecao[0], mesesCorrecao[mesesCorrecao.length - 1]);
+                }
+                if (mesesJurosLegal.length) {
+                    const a = mesesJurosLegal[0], b = mesesJurosLegal[mesesJurosLegal.length - 1];
+                    [serieSelic, serieIpca] = await Promise.all([buscarSerieSGS('selic', a, b), buscarSerieSGS('ipca', a, b)]);
+                }
+
+                // 2. Correção monetária (produto dos índices mensais)
+                let fator = 1;
+                const linhas = new Map();
+                const semIndice = [];
+                mesesCorrecao.forEach(m => {
+                    let pct = serieCorrecao[m];
+                    if (pct === undefined) { semIndice.push(rotuloMes(m)); pct = 0; }
+                    fator *= (1 + pct / 100);
+                    linhas.set(m, { pct, fator, corrigido: valor * fator, juros: null, faltando: serieCorrecao[m] === undefined });
+                });
+                if (semIndice.length) {
+                    avisos.push(`Índice ${SGS_SERIES[indice].nome} ainda não divulgado para: ${semIndice.join(', ')}. Considerado 0% nesses meses.`);
+                }
+                const valorCorrigido = valor * fator;
+
+                // 3. Juros de mora
+                let jurosPct = 0;
+                let descJuros = 'Sem juros';
+                if (tipoJuros === '1am' || tipoJuros === 'custom') {
+                    const taxa = tipoJuros === '1am' ? 1 : taxaCustom;
+                    const dias = Math.round((new Date(dataFim + 'T00:00:00Z') - new Date(dataJuros + 'T00:00:00Z')) / 86400000);
+                    jurosPct = taxa * dias / 30;
+                    descJuros = `${formatNum(taxa, 4).replace(/0+$/, '').replace(/,$/, '')}% a.m. simples, ${dias} dias desde ${isoParaBR(dataJuros)} (${formatNum(jurosPct, 4)}%)`;
+                } else if (tipoJuros === 'legal') {
+                    const semTaxa = [];
+                    mesesJurosLegal.forEach(m => {
+                        const s = serieSelic[m], i = serieIpca[m];
+                        let mesPct = 0;
+                        if (s === undefined || i === undefined) semTaxa.push(rotuloMes(m));
+                        else mesPct = Math.max(0, s - i);
+                        jurosPct += mesPct;
+                        const linha = linhas.get(m) || { pct: null, fator: null, corrigido: null };
+                        linha.juros = mesPct;
+                        linhas.set(m, linha);
+                    });
+                    if (semTaxa.length) avisos.push(`SELIC/IPCA ainda não divulgados para: ${semTaxa.join(', ')}. Taxa legal considerada 0% nesses meses.`);
+                    descJuros = `Taxa legal (SELIC − IPCA, mínimo zero) desde ${rotuloMes(mesDe(dataJuros))} (${formatNum(jurosPct, 4)}%)`;
+                }
+                const valorJuros = valorCorrigido * jurosPct / 100;
+                const subtotal = valorCorrigido + valorJuros;
+                const valorMulta = subtotal * multaPct / 100;
+                const valorHonor = subtotal * honorPct / 100;
+                const total = subtotal + valorMulta + valorHonor;
+
+                // 4. Resumo
+                const cartoes = [
+                    ['Valor original', formatBRL(valor)],
+                    [`Fator ${indice === 'nenhum' ? '' : SGS_SERIES[indice].nome}`.trim(), formatNum(fator, 6)],
+                    ['Valor corrigido', formatBRL(valorCorrigido)],
+                    [`Juros (${formatNum(jurosPct, 2)}%)`, formatBRL(valorJuros)],
+                    [`Multa (${formatNum(multaPct, 2)}%)`, formatBRL(valorMulta)],
+                    [`Honorários (${formatNum(honorPct, 2)}%)`, formatBRL(valorHonor)],
+                    ['Total atualizado', formatBRL(total)]
+                ];
+                document.getElementById('calcResumo').innerHTML = cartoes.map(([rotulo, v], idx) => {
+                    const destaque = idx === cartoes.length - 1;
+                    return `<div class="p-3 rounded-lg ${destaque ? 'col-span-2 md:col-span-1 bg-indigo-600 text-white' : 'bg-gray-50 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100'} border border-gray-200 dark:border-gray-600">
+                        <div class="text-xs ${destaque ? 'text-indigo-100' : 'text-gray-500 dark:text-gray-400'}">${rotulo}</div>
+                        <div class="text-lg font-bold tabular-nums">${v}</div>
+                    </div>`;
+                }).join('');
+
+                // 5. Tabela mês a mês
+                const mesesOrdenados = [...linhas.keys()].sort();
+                document.getElementById('calcTabela').innerHTML = mesesOrdenados.length
+                    ? mesesOrdenados.map(m => {
+                        const l = linhas.get(m);
+                        return `<tr>
+                            <td class="p-2">${rotuloMes(m)}</td>
+                            <td class="p-2 text-right tabular-nums">${l.pct === null ? '—' : formatNum(l.pct, 2) + (l.faltando ? ' *' : '')}</td>
+                            <td class="p-2 text-right tabular-nums">${l.fator === null ? '—' : formatNum(l.fator, 6)}</td>
+                            <td class="p-2 text-right tabular-nums">${l.corrigido === null ? '—' : formatBRL(l.corrigido)}</td>
+                            <td class="p-2 text-right tabular-nums">${l.juros === null ? '—' : formatNum(l.juros, 2)}</td>
+                        </tr>`;
+                    }).join('')
+                    : `<tr><td colspan="5" class="p-3 text-center text-gray-500">Datas no mesmo mês: não há índice mensal a aplicar.</td></tr>`;
+
+                // 6. Memória de cálculo em texto (para colar em petição/planilha)
+                const nomeIndice = indice === 'nenhum' ? 'Sem correção monetária' : `${SGS_SERIES[indice].nome} (BCB/SGS ${SGS_SERIES[indice].codigo})`;
+                const mem = [];
+                mem.push('MEMÓRIA DE CÁLCULO – ATUALIZAÇÃO MONETÁRIA');
+                if (referencia) mem.push(`Referência: ${referencia}`);
+                mem.push(`Valor original: ${formatBRL(valor)}`);
+                mem.push(`Período: ${isoParaBR(dataIni)} a ${isoParaBR(dataFim)}`);
+                mem.push(`Correção: ${nomeIndice}${mesesCorrecao.length ? `, ${rotuloMes(mesesCorrecao[0])} a ${rotuloMes(mesesCorrecao[mesesCorrecao.length - 1])}` : ''} – fator ${formatNum(fator, 6)}`);
+                mem.push(`Valor corrigido: ${formatBRL(valorCorrigido)}`);
+                mem.push(`Juros de mora: ${descJuros} = ${formatBRL(valorJuros)}`);
+                if (multaPct) mem.push(`Multa ${formatNum(multaPct, 2)}%: ${formatBRL(valorMulta)}`);
+                if (honorPct) mem.push(`Honorários ${formatNum(honorPct, 2)}%: ${formatBRL(valorHonor)}`);
+                mem.push(`TOTAL ATUALIZADO: ${formatBRL(total)}`);
+                if (avisos.length) mem.push('Observações: ' + avisos.join(' '));
+                mem.push(`Índices: Banco Central do Brasil – SGS, consulta em ${new Date().toLocaleDateString('pt-BR')}.`);
+                ultimaMemoriaCalculo = mem.join('\n');
+
+                if (avisos.length) {
+                    aviso.textContent = avisos.join(' ');
+                    aviso.classList.remove('hidden');
+                }
+                resultado.classList.remove('hidden');
+            } catch (err) {
+                console.error('Erro na calculadora:', err);
+                showModal('Erro ao consultar índices',
+                    'Não foi possível obter os índices no Banco Central (api.bcb.gov.br). Verifique sua conexão com a internet e tente novamente.\n\nDetalhe: ' + err.message, 'error');
+            } finally {
+                botao.disabled = false;
+                botao.innerHTML = textoOriginal;
+                initIcons();
+            }
+        }
+
+        function copiarMemoriaCalculo() {
+            if (!ultimaMemoriaCalculo) return;
+            const botao = document.getElementById('calcCopyButton');
+            const concluir = () => {
+                const original = botao.innerHTML;
+                botao.textContent = 'Copiado!';
+                setTimeout(() => { botao.innerHTML = original; initIcons(); }, 2000);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(ultimaMemoriaCalculo).then(concluir).catch(() => copiarFallback(ultimaMemoriaCalculo, concluir));
+            } else {
+                copiarFallback(ultimaMemoriaCalculo, concluir);
+            }
+        }
+
+        function copiarFallback(texto, concluir) {
+            const ta = document.createElement('textarea');
+            ta.value = texto;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); concluir(); }
+            catch (e) { showModal('Erro ao Copiar', 'Selecione e copie o texto manualmente.', 'error'); }
+            document.body.removeChild(ta);
+        }
+
+        // ========================
         // INICIALIZAÇÃO
         // ========================
 
@@ -1231,7 +1666,12 @@ Detalhes do Processo: ${processoDetalhes}`;
                 initIcons();
             });
 
-            // 6. Garante que os ícones finais sejam criados após o carregamento inicial.
+            // 6. Fecha a calculadora com Esc
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeCalcModal();
+            });
+
+            // 7. Garante que os ícones finais sejam criados após o carregamento inicial.
             initIcons();
         };
 
