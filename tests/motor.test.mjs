@@ -141,3 +141,10 @@ test('cópia do motor na skill é idêntica à fonte', async () => {
   assert.equal(readFileSync(u('../calculadora/motor-calculo.js'), 'utf8'),
     readFileSync(u('../.claude/skills/calculo-judicial/scripts/motor-calculo.js'), 'utf8'), 'rode node scripts/sync-skill.mjs');
 });
+
+test('pensão: parcelas ainda não vencidas ficam de fora', () => {
+  const r = M.calcularPensao({ dataCalculo: '2024-03-05', regime: { correcao: 'NENHUMA', juros: 'NENHUM' },
+    pensao: { modo: 'fixo', valor: 100, inicio: '2024-01', fim: '2024-03', diaVencimento: 10 } }, IDX);
+  assert.equal(r.itens.length, 2);
+  assert.equal(r.totais.debito, 200);
+});

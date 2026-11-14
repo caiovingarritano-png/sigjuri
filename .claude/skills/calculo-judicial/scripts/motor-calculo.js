@@ -661,7 +661,11 @@
     indices = indices || {};
     const avisos = new Set();
     const pensao = config.pensao || {};
-    const itens = gerarParcelasPensao(pensao, indices, avisos);
+    const dataCalc = normData(config.dataCalculo || new Date().toISOString().slice(0, 10));
+    const todas = gerarParcelasPensao(pensao, indices, avisos);
+    // Parcelas que ainda não venceram na data do cálculo não são dívida.
+    const itens = todas.filter((i) => i.dataBase <= dataCalc);
+    if (itens.length < todas.length) avisos.add((todas.length - itens.length) + ' parcela(s) com vencimento após a data do cálculo não foram incluídas.');
     const dataAj = pensao.dataAjuizamento ? normData(pensao.dataAjuizamento) : null;
 
     // Classificação por rito (art. 528, §7º, CPC + Súmula 309/STJ)

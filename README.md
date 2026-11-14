@@ -6,18 +6,18 @@
 
 ## Calculadora
 
-Abra `calculadora.html` no navegador (ou pelo menu ☰ da tela de processos).
+Abra `calculadora.html` no navegador (ou pelo menu ☰ da tela de processos). Página guiada, em uma coluna:
 
-- **Regimes prontos**: Tabela Prática TJSP + Lei 14.905/2024; CC art. 389/406; Selic (STJ, REsp 1.795.982); Fazenda Pública (EC 113/2021); personalizado.
-- **Índices em tempo real** (BCB/SGS): IPCA, IPCA-15/IPCA-E, INPC, IGP-M, IGP-DI, TR, Selic, taxa legal, salário mínimo. Se a consulta falhar, usa o retrato oficial embutido (`calculadora/indices-snapshot.js`, desde 2000) e aceita índices manuais.
-- **Juros** simples pro rata die; taxa legal (Selic − IPCA, piso zero — Res. CMN 5.171/2024); fase Selic sem cumulação.
-- **Pagamentos parciais** com imputação do art. 354 CC; piso nominal na deflação (STJ, Tema 678).
-- **Encargos**: multa e honorários do art. 523, §1º, CPC; honorários sucumbenciais; custas só com correção.
-- **Pensão alimentícia**: valor fixo, % do salário mínimo ou mês a mês; 13º; separação **rito da prisão** (3 últimas + vincendas — art. 528, §7º, CPC; Súm. 309/STJ) × **expropriação**; alerta de prescrição bienal (art. 206, §2º, e art. 197, II, CC).
-- **Saídas**: memória de cálculo (Markdown), CSV para Excel, impressão/PDF.
-- **Agente IA** (Gemini + Google Search): revisa o cálculo e a legislação vigente, minuta petição de cumprimento, lista pontos de impugnação.
+1. Escolha **Dívida ou condenação** ou **Pensão alimentícia**.
+2. Preencha valor e data (ou, na pensão, % do salário mínimo/valor, meses em atraso e pagamentos parciais).
+3. O total aparece na hora, com correção, juros, multa e honorários; na pensão, separado entre **pedido de prisão** (art. 528 CPC, Súm. 309/STJ) e **cobrança por penhora**.
+4. Copie o **texto para a petição**, a **memória de cálculo** ou a tabela para o **Excel**.
 
-O motor (`calculadora/motor-calculo.js`) é o mesmo usado pela skill e pelo agente do Claude.
+Critérios prontos: Tabela Prática do TJSP (Lei 14.905/2024), Código Civil (IPCA + taxa legal), Selic (STJ) e Fazenda Pública (EC 113).
+Data do cálculo, honorários da sentença, custas, índice/juros personalizados e índices manuais ficam em **Opções avançadas**.
+
+Índices: a página tenta consultar o Banco Central na hora; se não conseguir, usa o retrato oficial embutido
+(`calculadora/indices-snapshot.js`, desde 2000). O motor (`calculadora/motor-calculo.js`) é o mesmo da skill e do agente.
 
 ## Agente e skill do Claude
 
