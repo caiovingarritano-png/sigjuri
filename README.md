@@ -9,7 +9,7 @@
 Abra `calculadora.html` no navegador (ou pelo menu ☰ da tela de processos).
 
 - **Regimes prontos**: Tabela Prática TJSP + Lei 14.905/2024; CC art. 389/406; Selic (STJ, REsp 1.795.982); Fazenda Pública (EC 113/2021); personalizado.
-- **Índices em tempo real** (BCB/SGS): IPCA, IPCA-15/IPCA-E, INPC, IGP-M, IGP-DI, TR, Selic, taxa legal, salário mínimo. Campo de índices manuais para contingência.
+- **Índices em tempo real** (BCB/SGS): IPCA, IPCA-15/IPCA-E, INPC, IGP-M, IGP-DI, TR, Selic, taxa legal, salário mínimo. Se a consulta falhar, usa o retrato oficial embutido (`calculadora/indices-snapshot.js`, desde 2000) e aceita índices manuais.
 - **Juros** simples pro rata die; taxa legal (Selic − IPCA, piso zero — Res. CMN 5.171/2024); fase Selic sem cumulação.
 - **Pagamentos parciais** com imputação do art. 354 CC; piso nominal na deflação (STJ, Tema 678).
 - **Encargos**: multa e honorários do art. 523, §1º, CPC; honorários sucumbenciais; custas só com correção.
@@ -28,6 +28,7 @@ O motor (`calculadora/motor-calculo.js`) é o mesmo usado pela skill e pelo agen
 ```bash
 node --test tests/                       # testes do motor
 node scripts/sync-skill.mjs              # copia o motor para a skill após editar
+NODE_USE_ENV_PROXY=1 node scripts/atualizar-indices.mjs   # atualiza o retrato de índices do BCB embutido na calculadora
 python3 scripts/empacotar-skill.py       # gera dist/calculo-judicial.zip
 node .claude/skills/calculo-judicial/scripts/calcular.mjs .claude/skills/calculo-judicial/exemplos/pensao.json
 ```

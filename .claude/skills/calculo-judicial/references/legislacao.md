@@ -13,7 +13,7 @@
   **Selic − IPCA** (§1º); se o resultado for negativo, considera-se **zero** para o período (§3º).
 - **Res. CMN 5.171/2024**: metodologia. Taxa mensal = max(0, (Fator Selic ÷ Fator IPCA − 1) × 100),
   seis casas decimais, **juros simples**, inclusive pro rata em fração de mês. O BCB divulga a taxa
-  legal mensal (série SGS 29543 — conferir o código no portal do BCB). Pela resolução, o deflator usado
+  legal mensal (série SGS 29543, conferida em 11/2026). Pela resolução, o deflator usado
   é o **IPCA-15** do mês anterior (o motor usa a série oficial e só recorre à fórmula se ela faltar).
 - Direito intertemporal (prática majoritária): **regime antigo até 29/08/2024** e regime novo a partir
   de 30/08/2024 para as obrigações em curso.

@@ -59,7 +59,8 @@ Monte o JSON (modelos em `exemplos/`) e execute:
 node scripts/calcular.mjs caso.json --md memoria.md --csv calculo.csv --json resultado.json
 ```
 
-O script busca os índices **em tempo real** na API SGS do Banco Central. Se a rede do ambiente
+O script busca os índices **em tempo real** na API SGS do Banco Central (atrás de proxy, rode com
+`NODE_USE_ENV_PROXY=1`). Se a rede do ambiente
 bloquear `api.bcb.gov.br` (código de saída 3 ou aviso "Não foi possível obter"):
 1. `node scripts/calcular.mjs --urls caso.json` lista as URLs exatas do BCB;
 2. baixe cada URL com a ferramenta de busca/leitura web (o retorno é JSON `[{"data","valor"}]`);

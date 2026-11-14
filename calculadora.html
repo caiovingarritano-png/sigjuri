@@ -8,6 +8,7 @@
 <script>if (window.tailwind) tailwind.config = { darkMode: 'class' };</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="calculadora/motor-calculo.js"></script>
+<script src="calculadora/indices-snapshot.js"></script>
 <style>
   body { font-family: 'Inter', sans-serif; }
   .card { background: #fff; border-radius: .75rem; box-shadow: 0 4px 12px rgba(0,0,0,.06); padding: 1.25rem; }
@@ -122,7 +123,7 @@
   <section class="card no-print">
     <div class="flex flex-wrap gap-2 items-center">
       <button class="btn bg-indigo-600 hover:bg-indigo-700 text-white" onclick="executar()">⟳ Buscar índices do BCB e calcular</button>
-      <button class="btn bg-gray-200 dark:bg-gray-700" onclick="executar(true)">Calcular só com índices manuais/cache</button>
+      <button class="btn bg-gray-200 dark:bg-gray-700" onclick="executar(true)">Calcular sem consultar o BCB (retrato + manuais)</button>
       <span id="status" class="text-sm text-gray-500"></span>
     </div>
     <details class="mt-3">
@@ -286,27 +287,43 @@ function lerIndicesManuais() {
 }
 
 // ---------- execução ----------
+// Ordem de prioridade dos índices: manuais > consulta ao vivo no BCB > retrato embutido (indices-snapshot.js).
+const SNAP = window.INDICES_SNAPSHOT || null;
+function mesclar(...fontes) {
+  const out = {};
+  for (const f of fontes) for (const [k, v] of Object.entries(f || {})) out[k] = { ...(out[k] || {}), ...v };
+  return out;
+}
+const dataSnap = () => SNAP ? new Date(SNAP.geradoEm).toLocaleDateString('pt-BR') : '';
 async function executar(offline) {
   const st = document.getElementById('status');
   try {
     const cfg = lerConfig(); salvarForm();
-    let res;
+    const manuais = lerIndicesManuais();
+    let res, origem;
     if (offline) {
-      const idx = { ...cacheIndices }; for (const [k, v] of Object.entries(lerIndicesManuais())) idx[k] = { ...(idx[k] || {}), ...v };
-      res = cfg.pensao ? M.calcularPensao(cfg, idx) : M.calcular(cfg, idx);
+      res = cfg.pensao ? M.calcularPensao(cfg, mesclar(SNAP && SNAP.indices, cacheIndices, manuais)) : M.calcular(cfg, mesclar(SNAP && SNAP.indices, cacheIndices, manuais));
+      origem = SNAP ? 'índices do retrato do BCB de ' + dataSnap() : 'índices manuais';
     } else {
       st.textContent = 'Consultando Banco Central…';
       const series = M.seriesNecessarias(cfg), de = M.mesInicialNecessario(cfg), ate = U.mesDe(cfg.dataCalculo);
-      const busca = await M.buscarIndices(series, de, ate, { onProgresso: (n, ok) => st.textContent = (ok ? '✓ ' : '✗ ') + n + '…' });
-      cacheIndices = { ...cacheIndices }; for (const [k, v] of Object.entries(busca.indices)) cacheIndices[k] = { ...(cacheIndices[k] || {}), ...v };
-      const idx = { ...cacheIndices }; for (const [k, v] of Object.entries(lerIndicesManuais())) idx[k] = { ...(idx[k] || {}), ...v };
+      const busca = await M.buscarIndices(series, de, ate, { tentativas: 1, onProgresso: (n, ok) => st.textContent = (ok ? '✓ ' : '✗ ') + n + '…' });
+      for (const [k, v] of Object.entries(busca.indices)) cacheIndices[k] = { ...(cacheIndices[k] || {}), ...v };
+      const idx = mesclar(SNAP && SNAP.indices, cacheIndices, manuais);
       res = cfg.pensao ? M.calcularPensao(cfg, idx) : M.calcular(cfg, idx);
-      for (const [n, e] of Object.entries(busca.erros)) res.avisos.unshift('Não foi possível obter ' + n + ' do BCB (' + e + '). Use os índices manuais.');
-      res.fonteIndices = { fonte: busca.fonte, consultadoEm: busca.consultadoEm };
+      const falhas = Object.keys(busca.erros);
+      if (!falhas.length) origem = 'índices consultados no BCB em ' + new Date(busca.consultadoEm).toLocaleString('pt-BR');
+      else if (SNAP) {
+        origem = 'consulta ao BCB indisponível — usado o retrato oficial do BCB de ' + dataSnap();
+        res.avisos.unshift('Consulta em tempo real ao BCB indisponível neste ambiente (' + falhas.join(', ') + '). Usados os índices oficiais do BCB baixados em ' + dataSnap() + '. Meses posteriores, se houver, podem ser informados em "Índices manuais".');
+      } else {
+        origem = 'sem índices do BCB';
+        for (const [n, e] of Object.entries(busca.erros)) res.avisos.unshift('Não foi possível obter ' + n + ' do BCB (' + e + '). Use os índices manuais.');
+      }
       try { localStorage.setItem(LS + '_idx', JSON.stringify(cacheIndices)); } catch (e) {}
     }
     ultimoResultado = res; renderResultado(res);
-    st.textContent = 'Cálculo concluído' + (res.fonteIndices ? ' — índices BCB consultados em ' + new Date(res.fonteIndices.consultadoEm).toLocaleString('pt-BR') : '') + '.';
+    st.textContent = 'Cálculo concluído — ' + origem + '.';
   } catch (e) { st.textContent = '⚠ ' + e.message; console.error(e); }
 }
 

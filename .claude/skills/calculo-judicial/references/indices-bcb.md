@@ -12,9 +12,9 @@ Resposta: `[{"data":"01/01/2025","valor":"0.16"}, ...]` — a data é sempre o 1
 | `INPC` | 188 | variação % mensal | Tabela Prática TJSP até 08/2024 |
 | `IGP-M` | 189 | variação % mensal | Comum em contratos de locação |
 | `IGP-DI` | 190 | variação % mensal | |
-| `TR` | 7811 | % mensal (1º dia do mês) | Conferir a série; TR diária é a 226 |
-| `SELIC` | 4390 | Selic acumulada no mês, % a.m. | Acumulação **simples** (soma) — EC 113 / Manual CJF |
-| `TAXA_LEGAL` | 29543 | taxa legal mensal (% a.m.) | Res. CMN 5.171/2024. Conferir código no portal do BCB; na falta, o motor calcula pela fórmula |
+| `TR` | 7811 | % mensal (1º dia do mês) | Código conferido na API em 11/2026 |
+| `SELIC` | 4390 | Selic acumulada no mês, % a.m. | Acumulação **simples** (soma) — EC 113 / Manual CJF. O valor do mês corrente é parcial (acumulado até a data) |
+| `TAXA_LEGAL` | 29543 | taxa legal mensal (% a.m.), desde 08/2024 | Res. CMN 5.171/2024. Código conferido na API em 11/2026; a taxa do mês M usa Selic e IPCA-15 do mês M−1 (fórmula conferida contra a série). Já sai publicada para o mês corrente |
 | `SALARIO_MINIMO` | 1619 | valor em R$ | Para pensão em % do SM |
 
 ## Cuidados
@@ -26,3 +26,7 @@ Resposta: `[{"data":"01/01/2025","valor":"0.16"}, ...]` — a data é sempre o 1
 - Convenção do motor: correção pelos meses do mês da data-base (inclusive) até o mês do cálculo
   (exclusive), sem pro rata — igual à leitura de fatores da Tabela Prática (fator do mês do cálculo ÷ fator
   do mês da data-base).
+
+## Node.js atrás de proxy
+O `fetch` nativo do Node ignora `HTTPS_PROXY`. Em ambientes com proxy, rode com
+`NODE_USE_ENV_PROXY=1` (Node ≥ 22.21) e, se houver CA própria, `NODE_EXTRA_CA_CERTS=<arquivo>`.
